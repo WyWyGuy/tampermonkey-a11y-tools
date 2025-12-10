@@ -1,55 +1,93 @@
 // ==UserScript==
 // @name         Click Raw HTML Editor
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-04
+// @version      2025-12-10
 // @description  Automatically select the raw HTML editor option on Canvas edit pages
 // @author       Wyatt Nilsson
-// @match https://byu.instructure.com/courses/*
-// @match https://byuis.instructure.com/courses/*
-// @match https://byuismastercourses.instructure.com/courses/*
-// @match https://byuohs.instructure.com/courses/*
+// @match        https://byu.instructure.com/courses/*
+// @match        https://byuis.instructure.com/courses/*
+// @match        https://byuismastercourses.instructure.com/courses/*
+// @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ClickRawHTMLEditor.user.js
 // @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ClickRawHTMLEditor.user.js
-// @grant        none
+// @grant        GM_registerMenuCommand
+// @grant        GM_getValue
+// @grant        GM_setValue
 // ==/UserScript==
 
-(function() {
-    'use strict';
+(function () {
+    "use strict";
 
-    // Run only on edit pages
-    if (!location.pathname.endsWith('/edit')) return;
+    const AUTO_HTML_KEY = "auto_html_editor";
+    let autoSwitch = GM_getValue(AUTO_HTML_KEY, true);
 
-    // Helper: wait for element to appear
-    function waitForSelector(selector, callback) {
-        const el = document.querySelector(selector);
-        if (el) {
-            callback(el);
-        } else {
-            const observer = new MutationObserver(() => {
-                const el = document.querySelector(selector);
-                if (el) {
-                    observer.disconnect();
-                    callback(el);
-                }
+    function registerMenu() {
+        GM_registerMenuCommand(
+            `${autoSwitch ? "🟩" : "⬜"} Auto HTML Editor: ${autoSwitch ? "ON" : "OFF"}`,
+            () => {
+                autoSwitch = !autoSwitch;
+                GM_setValue(AUTO_HTML_KEY, autoSwitch);
+                registerMenu();
+                scanForButtons();
+            },
+            { id: "auto-html-toggle" }
+        );
+    }
+
+    registerMenu();
+
+    const clicked = new WeakSet();
+
+    function clickIfEligible(el) {
+        if (!el || clicked.has(el)) return;
+        clicked.add(el);
+        setTimeout(() => el.click(), 250);
+    }
+
+    function scanForButtons(root = document) {
+        const rawMatches = [...root.querySelectorAll("button")].filter(el =>
+            el.textContent.includes("Switch to raw HTML Editor")
+        );
+        rawMatches.forEach(clickIfEligible);
+
+        if (autoSwitch) {
+            const htmlButtons = [...root.querySelectorAll("button")].filter(el => {
+                if (clicked.has(el)) return false;
+
+                const title = el.getAttribute?.("title") || "";
+                const text = el.textContent || "";
+
+                return (
+                    title.includes("Switch to the rich text editor") ||
+                    title.includes("Click or shift-click for the html editor") ||
+                    text.includes("Switch to the rich text editor") ||
+                    text.includes("Switch to the html editor")
+                );
             });
-            observer.observe(document.body, { childList: true, subtree: true });
+
+            htmlButtons.forEach(clickIfEligible);
         }
     }
 
-    // Step 1: click "Switch to rich text editor" after 0.5s
-    waitForSelector('button[data-btn-id="rce-edit-btn"]', btn => {
-        setTimeout(() => {
-            btn.click();
+    scanForButtons();
 
-            // Step 2: after clicking, look for "Switch to raw HTML Editor"
-            waitForSelector('button[data-btn-id="rce-editormessage-btn"]', rawBtn => {
-                if (rawBtn.textContent.toLowerCase().includes('raw html')) {
-                    setTimeout(() => {
-                        rawBtn.click();
-                    }, 500); // 0.5s delay before clicking raw HTML editor
+    const observer = new MutationObserver(mutations => {
+        for (const m of mutations) {
+            if (m.addedNodes) {
+                for (const node of m.addedNodes) {
+                    if (node.nodeType === 1) {
+                        scanForButtons(node);
+                    }
                 }
-            });
-        }, 500); // 0.5s delay before clicking rich text editor
+            }
+        }
     });
+
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+
+    setInterval(scanForButtons, 500);
 })();
