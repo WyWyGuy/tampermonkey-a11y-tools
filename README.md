@@ -34,4 +34,4 @@ This script simply labels each module in Canvas with its index (1-indexed) to ea
 
 # ClickRawHTMLEditor.user.js
 
-This script simply clicks the edit as HTML button and switches to the raw HTML editor if it isn't already on every Canvas edit page.
+This script simply clicks the edit as HTML button (if toggled on) and always switches to the raw HTML editor on every Canvas edit page.
