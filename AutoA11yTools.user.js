@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-04
+// @version      2025-12-15
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -77,6 +77,7 @@
             run: highlightContrastFailures,
             remove: removeContrastHighlights
         },
+        /*
         IB: {
             id: "ib",
             label: "<i>/<b> Usage",
@@ -84,6 +85,7 @@
             run: runIBTagOverlay,
             remove: removeIBHighlights
         },
+        */
         LANG: {
             id: "lang",
             label: "Lang Attributes",
