@@ -1,4 +1,4 @@
-prioritization[D[D[D[D[D[D[D[D[D[D[D[D[P
+Prioritization
 Dropdown
 Checkbox
 Checkboxes
