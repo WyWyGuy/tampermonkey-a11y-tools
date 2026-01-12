@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12
+// @version      2026-01-12.1
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -10,6 +10,8 @@
 // @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/RawHTMLEditorHelper.user.js
+// @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/RawHTMLEditorHelper.user.js
 // ==/UserScript==
 
 (function () {
@@ -172,8 +174,8 @@
             ranges.forEach((r, i) => {
                 out += html.slice(last, r.start);
                 const style = i === activeIndex
-                ? `background: ${activeColor}; color:black;`
-                : `background: ${color}; color:black;`;
+                ? `background: ${activeColor};`
+                : `background: ${color};`;
                 out += `<span style="${style}">${html.slice(r.start, r.end)}</span>`;
                 last = r.end;
             });
