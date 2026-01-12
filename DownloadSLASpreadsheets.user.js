@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Download SLA Spreadsheets
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-20
+// @version      2026-01-12
 // @description  Automate downloading Excel spreadsheets from Teamwork
 // @author       Wyatt Nilsson
 // @match        https://byuis.teamwork.com/*
 // @icon         https://cdn-lightspeed.teamwork.com/favicon.ico
 // @grant        GM_registerMenuCommand
+// @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/DownloadSLASpreadsheets.user.js
+// @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/DownloadSLASpreadsheets.user.js
 // ==/UserScript==
 
 function sleep(ms = 50) {
