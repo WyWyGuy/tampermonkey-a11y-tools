@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12.1
+// @version      2026-01-12.2
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -84,6 +84,24 @@
 
         searchBar.append(searchInput, prevBtn, nextBtn, counter);
         wrapper.appendChild(searchBar);
+
+        const mirror = document.createElement("div");
+        mirror.style.position = "absolute";
+        mirror.style.visibility = "hidden";
+        mirror.style.whiteSpace = "pre-wrap";
+        mirror.style.wordWrap = "break-word";
+        mirror.style.overflowWrap = "break-word";
+        mirror.style.boxSizing = "border-box";
+
+        mirror.style.fontFamily = style.fontFamily;
+        mirror.style.fontSize = style.fontSize;
+        mirror.style.fontWeight = style.fontWeight;
+        mirror.style.fontStyle = style.fontStyle;
+        mirror.style.letterSpacing = style.letterSpacing;
+        mirror.style.lineHeight = style.lineHeight;
+        mirror.style.padding = `${style.paddingTop} ${style.paddingRight} ${style.paddingBottom} ${style.paddingLeft}`;
+
+        wrapper.appendChild(mirror);
 
         // --- OVERLAYS ---
         function createOverlay(zIndex) {
@@ -183,6 +201,19 @@
             return out;
         }
 
+        function focusSearchBox() {
+            searchInput.focus();
+            searchInput.select();
+            searchBar.style.boxShadow = "0 0 0 2px rgba(0,128,255,0.6)";
+            setTimeout(() => searchBar.style.boxShadow = "", 300);
+
+            // Ensure highlights stay in sync even if term was already there
+            searchState.term = searchInput.value;
+            searchState.index = searchState.term ? 0 : -1;
+            syncOverlays();
+        }
+
+
         function syncOverlays() {
             syncAllOverlayWidths();
 
@@ -231,15 +262,24 @@
 
         function scrollToMatch(index) {
             if (!searchState.ranges.length) return;
+
             const r = searchState.ranges[index];
+
+            // Selection (still correct)
             textarea.setSelectionRange(r.start, r.end);
             textarea.focus();
 
-            // approximate scroll
-            const cs = getComputedStyle(textarea);
-            const lineHeight = parseFloat(cs.lineHeight);
-            const linesBefore = textarea.value.slice(0, r.start).split("\n").length - 1;
-            textarea.scrollTop = linesBefore * lineHeight;
+            // Sync mirror width
+            mirror.style.width = textarea.clientWidth + "px";
+
+            // Measure caret position
+            mirror.textContent = textarea.value.slice(0, r.start);
+
+            const caretY = mirror.scrollHeight;
+
+            // Scroll so caret is comfortably visible
+            textarea.scrollTop = Math.max(0, caretY - textarea.clientHeight / 3);
+
             overlaysScrollSync();
         }
 
@@ -268,6 +308,18 @@
         nextBtn.addEventListener("click", () => jumpToMatch(1));
 
         new ResizeObserver(syncOverlays).observe(textarea);
+
+        function globalCtrlFHandler(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+                // Only hijack if this textarea is visible
+                if (!wrapper.isConnected) return;
+
+                e.preventDefault();
+                focusSearchBox();
+            }
+        }
+
+        document.addEventListener("keydown", globalCtrlFHandler);
 
         // initial sync
         syncOverlays();
