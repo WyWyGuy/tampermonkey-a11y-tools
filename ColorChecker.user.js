@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Color Checker
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-20
+// @version      2026-01-12
 // @description  Hover over any text to see its color contrast
 // @author       Wyatt Nilsson
 // @match        https://*/*
 // @icon         https://www.bookmarks.design//media/image/a11yproject.jpg
 // @grant        GM_registerMenuCommand
+// @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ColorChecker.user.js
+// @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ColorChecker.user.js
 // ==/UserScript==
 
 (function () {
