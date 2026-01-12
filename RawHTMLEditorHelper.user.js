@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12.2
+// @version      2026-01-12.3
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
-// @match        https://byu.instructure.com/courses/*
-// @match        https://byuis.instructure.com/courses/*
-// @match        https://byuismastercourses.instructure.com/courses/*
-// @match        https://byuohs.instructure.com/courses/*
+// @match        https://byu.instructure.com/courses/*/edit
+// @match        https://byuis.instructure.com/courses/*/edit
+// @match        https://byuismastercourses.instructure.com/courses/*/edit
+// @match        https://byuohs.instructure.com/courses/*/edit
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/RawHTMLEditorHelper.user.js
