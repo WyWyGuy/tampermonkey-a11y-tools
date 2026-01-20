@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12.3
+// @version      2026-01-20
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*/edit
@@ -156,7 +156,7 @@
 
             findOverlay.content.style.width = innerWidth + "px";
             patternOverlays.forEach(ov => {
-                ov.content.style.width = innerWidth-0.05 + "px"; //I truly have no idea why I have to remove just 0.05 pixels from the width, but it fixed at least one misalignment issue.
+                ov.content.style.width = innerWidth + "px"; //Some pages are slightly off sometimes
             });
         }
 
