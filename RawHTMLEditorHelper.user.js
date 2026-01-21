@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-20
+// @version      2026-01-21
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*/edit
@@ -152,11 +152,10 @@
 
         // --- HELPERS ---
         function syncAllOverlayWidths() {
-            const innerWidth = textarea.clientWidth;
-
+            const innerWidth = textarea.getBoundingClientRect().width - (textarea.offsetWidth - textarea.clientWidth);
             findOverlay.content.style.width = innerWidth + "px";
             patternOverlays.forEach(ov => {
-                ov.content.style.width = innerWidth + "px"; //Some pages are slightly off sometimes
+                ov.content.style.width = innerWidth + "px";
             });
         }
 
