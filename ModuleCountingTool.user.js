@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Module Counting Tool
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-04
+// @version      2026-01-21
 // @description  Label modules to easily see the indices of them
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*/modules
@@ -84,7 +84,7 @@
                 border.style.display = 'block';
                 const top = window.scrollY + r.top;
                 const left = window.scrollX + r.left;
-                label.style.top = (top - 22) + 'px';
+                label.style.top = top + 'px';
                 label.style.left = left + 'px';
                 border.style.top = top + 'px';
                 border.style.left = left + 'px';
