@@ -4,8 +4,8 @@ This script provides many accessibility tools that automatically run on Canvas p
 
 | Tool                       | Usage                                                                                        |
 |----------------------------|----------------------------------------------------------------------------------------------|
-|Activate All A11y Tools     | Activates all a11y tools.                                                                    |
-|Remove All A11y Tools       | Deactivates all a11y tools.                                                                  |
+|Activate All A11y Tools     | Activates all a11y tools. (Also activated with the numpad `+` button)                        |
+|Remove All A11y Tools       | Deactivates all a11y tools. (Also deactivated with the numpad `-` button)                    |
 |Image Alt Text              | Adds overlays to images showing their alt text, decorative status, or missing alt text.      |
 |Iframe Labels               | Adds overlays to iframes showing their aria-label, aria-description, and title, or missing.  |
 |Heading Tags                | Adds overlays to headings showing what level of heading they are.                            |
