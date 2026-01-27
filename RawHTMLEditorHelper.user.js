@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-21
+// @version      2026-01-27
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*/edit
@@ -19,10 +19,10 @@
 
     const SEARCH_PATTERNS = [
         { regex: /aria-label=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0,255,204,0.4);" },
-        { regex: /title=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(255,219,0,0.45);" },
+        { regex: /title=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(255,164,0,0.45);" },
         { regex: /aria-description=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(255,0,0,0.30);" },
         { regex: /alt=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0, 255, 90, 0.35);" },
-        { regex: /&lt;table\b(?:[^&]|&(?:quot|amp|#39);)*?&gt;/gi, style: "background: rgba(0,128,255,0.25);" },
+        { regex: /&lt;table\b(?:[^&]|&(?:quot|amp|#39);)*?&gt;/gi, style: "background: rgba(255,219,0,0.45);" },
         { regex: /&lt;h1\b[\s\S]*?&gt;[\s\S]*?&lt;\/h1&gt;/gi, style: "background: rgba(128,0,128,0.55);" },
         { regex: /&lt;h2\b[\s\S]*?&gt;[\s\S]*?&lt;\/h2&gt;/gi, style: "background: rgba(128,0,128,0.43);" },
         { regex: /&lt;h3\b[\s\S]*?&gt;[\s\S]*?&lt;\/h3&gt;/gi, style: "background: rgba(128,0,128,0.35);" },
@@ -185,7 +185,7 @@
             return e;
         }
 
-        function injectHighlights(html, ranges, activeIndex = -1, color = "rgba(170,0,255,0.35)", activeColor = "rgba(170,0,255,0.75)") {
+        function injectHighlights(html, ranges, activeIndex = -1, color = "rgba(0,128,255,0.35)", activeColor = "rgba(0,128,255,0.75)") {
             if (!ranges.length) return html;
             let out = "", last = 0;
             ranges.forEach((r, i) => {
