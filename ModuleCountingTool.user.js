@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Module Counting Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-21
-// @description  Label modules to easily see the indices of them
+// @version      2026-01-29
+// @description  Label modules to easily see their indices
 // @author       Wyatt Nilsson
-// @match        https://byu.instructure.com/courses/*/modules
-// @match        https://byuis.instructure.com/courses/*/modules
-// @match        https://byuismastercourses.instructure.com/courses/*/modules
-// @match        https://byuohs.instructure.com/courses/*/modules
+// @match        https://byu.instructure.com/courses/*
+// @match        https://byuis.instructure.com/courses/*
+// @match        https://byuismastercourses.instructure.com/courses/*
+// @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ModuleCountingTool.user.js
 // @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ModuleCountingTool.user.js
@@ -16,6 +16,14 @@
 
 (function() {
     'use strict';
+
+    // Only run on home and modules pages
+    const url = window.location.href;
+    const isModulesPage = /\/courses\/\d+\/modules\/?$/.test(url);
+    const isHomePage = /\/courses\/\d+\/?$/.test(url) && !isModulesPage;
+    if (!isModulesPage && !isHomePage) {
+        return;
+    }
 
     // Remove any old helper elements
     document.querySelectorAll('.AccessibilityHelper-label,.AccessibilityHelper-border').forEach(e => e.remove());
