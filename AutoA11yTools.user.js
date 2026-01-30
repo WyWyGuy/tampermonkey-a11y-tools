@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-15
+// @version      2026-01-30.1
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -38,7 +38,8 @@
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses$/, // Canvas courses page
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/?$/, // Canvas main page
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/calendar(?:\/.*|[#?].*)?$/, // Canvas calendar page
-        /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/conversations(?:\/.*|[#?].*)?$/ // Canvas inbox page
+        /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/conversations(?:\/.*|[#?].*)?$/, // Canvas inbox page
+        /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/?$/ // Any course's home page
     ];
     const currentHost = window.location.hostname;
     const isAutoRunDomain = autoRunDomains.includes(currentHost);
@@ -68,29 +69,29 @@
             label: "Heading Tags",
             key: "a11y_heading",
             run: runHeadingTagOverlay,
-            remove: removeHeadingOverlay
-        },
-        CONTRAST: {
-            id: "contrast",
-            label: "Contrast Issues",
-            key: "a11y_contrast",
-            run: highlightContrastFailures,
-            remove: removeContrastHighlights
+            remove: removeHeadingTagOverlay
         },
         /*
         IB: {
             id: "ib",
             label: "<i>/<b> Usage",
             key: "a11y_ib",
-            run: runIBTagOverlay,
-            remove: removeIBHighlights
+            run: runIBTagHighlights,
+            remove: removeIBTagHighlights
         },
         */
+        CONTRAST: {
+            id: "contrast",
+            label: "Contrast Issues",
+            key: "a11y_contrast",
+            run: runContrastHighlights,
+            remove: removeContrastHighlights
+        },
         LANG: {
             id: "lang",
             label: "Lang Attributes",
             key: "a11y_lang",
-            run: runLangOverlay,
+            run: runLangHighlights,
             remove: removeLangHighlights
         },
         TABLE: {
@@ -98,43 +99,9 @@
             label: "Table Problems",
             key: "a11y_table",
             run: runTableOverlay,
-            remove: removeTableHighlights
+            remove: removeTableOverlay
         }
     };
-
-    const toolResources = new Map();
-
-    // Resource management functions
-    function ensureToolResources(key) {
-        if (!toolResources.has(key)) {
-            toolResources.set(key, { observers: [], listeners: [], containers: [] });
-        }
-        return toolResources.get(key);
-    }
-
-    function addObserver(key, obs) {
-        ensureToolResources(key).observers.push(obs);
-    }
-
-    function addListener(key, target, type, handler, options) {
-        ensureToolResources(key).listeners.push({ target, type, handler, options });
-        try {
-            target.addEventListener(type, handler, options);
-        } catch (e) { /* ignore */ }
-    }
-
-    function addContainer(key, el) {
-        ensureToolResources(key).containers.push(el);
-    }
-
-    function cleanupTool(key) {
-        const res = toolResources.get(key);
-        if (!res) return;
-        res.observers.forEach(o => { try { o.disconnect(); } catch (e) { } });
-        res.listeners.forEach(l => { try { l.target.removeEventListener(l.type, l.handler, l.options); } catch (e) { } });
-        res.containers.forEach(c => { try { c.remove(); } catch (e) { } });
-        toolResources.delete(key);
-    }
 
     // Global styles
     function ensureGlobalStyles() {
@@ -143,87 +110,25 @@
         style.id = 'a11y-overlay-styles';
         style.textContent = `
       .AccessibilityHelper { font-family: Arial, Helvetica, sans-serif; }
-      .A11y-img-label { position:absolute;background:#FFF;border:3px solid #CCC;border-radius:7px;padding:5px;text-align:left;white-space:pre-wrap;font-size:12px;width:150px;z-index:9999;color:black;display:none }
-      .A11y-img-border { position:absolute;border:3px solid #CCC;border-radius:7px;z-index:9998;display:none;pointer-events:none;transition:border-color 0.2s ease, box-shadow 0.2s ease }
-      .A11y-iframe-label { position:absolute;background:#FFF;border:3px solid #CCC;border-radius:7px;padding:5px;text-align:left;white-space:pre-wrap;width:300px;font-size:12px;z-index:9999;transition:all 0.2s ease;display:none }
-      .A11y-iframe-border { position:absolute;border:3px solid #CCC;border-radius:7px;z-index:9998;transition:all 0.2s ease;display:none;pointer-events:none }
-      .AccessibilityHelper-label { background: #FFF;border: 3px solid #CCC;border-radius: 4px;padding: 2px 4px;position: absolute;white-space: nowrap;font-size: 12px;z-index: 10001;color: black;transition: all 0.2s ease;display: none }
-      .AccessibilityHelper-border { position: absolute;border: 3px solid #CCC;border-radius: 4px;z-index: 9999;pointer-events: none;transition: all 0.2s ease;display: none }
-      .AccessibilityHelper-highlight { border-color: #393 !important;box-shadow: 1px 2px 5px #CCC }
-      .IBOverlay-border { position: absolute;border: 2px solid red;border-radius: 4px;z-index: 9999;pointer-events: none;transition: all 0.2s ease;display: none }
-      .IBOverlay-highlight { border-color: #c00 !important;box-shadow: 1px 2px 5px #f99 }
-      .ContrastOverlay-border { position: absolute;border: 2px solid blue;border-radius: 4px;z-index: 9999;pointer-events: none;transition: all 0.2s ease;display: none }
-      .ContrastOverlay-highlight { border-color: #339 !important;box-shadow: 1px 2px 5px #99f }
-      .A11y-table-label { position: absolute;background: #FFF;border: 3px solid #CCC;border-radius: 7px;padding: 5px;text-align: left;white-space: pre-wrap;font-size: 12px;width: 300px;z-index: 9999;color: black;display: none; }
-      .A11y-table-border { position: absolute;border: 3px solid #CCC;border-radius: 7px;z-index: 9998;pointer-events: none;display: none;transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-      .LangOverlay-border { position: absolute;border: 2px solid green;border-radius: 4px;z-index: 9999;pointer-events: none;transition: all 0.2s ease;display: none;box-shadow: 1px 2px 5px #afa; }
-      .LangOverlay-highlight { border-color: #2b2 !important;box-shadow: 1px 2px 6px #7f7; }
+      .A11y-img-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; text-align: left; white-space: pre-wrap; font-size: 12px; width: 150px; z-index: 9999; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-img-border { position: absolute; border: 3px solid #CCC; border-radius: 7px; z-index: 9998; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+      .A11y-iframe-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; text-align: left; white-space: pre-wrap; font-size: 12px; width: 300px; z-index: 9999; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-iframe-border { position: absolute; border: 3px solid #CCC; border-radius: 7px; z-index: 9998; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+      .A11y-header-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 4px; padding: 2px 4px; text-align: left; white-space: nowrap; font-size: 12px; z-index: 10000; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-header-border { position: absolute; border: 3px solid #CCC; border-radius: 4px; z-index: 9998; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+      .A11y-ib-border { position: absolute; border: 2px solid red; border-radius: 4px; z-index: 10001; pointer-events: none; transition: all 0.2s ease; display: none; }
+      .A11y-ib-highlight { border-color: #c00 !important; box-shadow: 1px 2px 5px #f99; z-index: 10001; }
+      .A11y-contrast-border { position: absolute; border: 2px solid blue; border-radius: 4px; z-index: 10001; pointer-events: none; transition: all 0.2s ease; display: none; }
+      .A11y-contrast-highlight { border-color: #339 !important; box-shadow: 1px 2px 5px #99f; z-index: 10001; }
+      .A11y-table-label { position: absolute; background: #FFF; border: 3px solid #CCC; border-radius: 7px; padding: 5px; text-align: left; white-space: pre-wrap; font-size: 12px; width: 300px; z-index: 9999; color: black; display: none; transition: all 0.2s ease; }
+      .A11y-table-border { position: absolute; border: 3px solid #CCC; border-radius: 7px; z-index: 9998; display: none; pointer-events: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+      .A11y-lang-border { position: absolute; border: 2px solid green; border-radius: 4px; z-index: 10001; pointer-events: none; transition: all 0.2s ease; display: none; }
+      .A11y-lang-highlight { border-color: #2b2 !important; box-shadow: 1px 2px 6px #7f7; z-index: 10001; }
     `;
         document.head.appendChild(style);
     }
 
     ensureGlobalStyles();
-
-    // Utility functions
-    function debounce(fn, wait = 80) {
-        let t = null;
-        return function (...args) {
-            clearTimeout(t);
-            t = setTimeout(() => fn.apply(this, args), wait);
-        };
-    }
-
-    function makeLabel(toolKey, className, text, cssText) {
-        const label = document.createElement('div');
-        label.className = 'AccessibilityHelper ' + className;
-        if (cssText) label.style.cssText = cssText;
-        if (text !== undefined) label.textContent = text;
-        document.body.appendChild(label);
-        addContainer(toolKey, label);
-        return label;
-    }
-
-    function makeBorder(toolKey, className, cssText) {
-        const border = document.createElement('div');
-        border.className = 'AccessibilityHelper ' + className;
-        if (cssText) border.style.cssText = cssText;
-        document.body.appendChild(border);
-        addContainer(toolKey, border);
-        return border;
-    }
-
-    function attachAutoUpdate(toolKey, updateFn, opts = {}) {
-        const debounced = opts.debounce === false ? updateFn : debounce(updateFn, opts.wait || 80);
-        addListener(toolKey, window, 'scroll', debounced, { passive: true });
-        addListener(toolKey, window, 'resize', debounced);
-        const mo = new MutationObserver(debounced);
-        mo.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: opts.attributeFilter || ['style', 'class', 'hidden']
-        });
-        addObserver(toolKey, mo);
-        return mo;
-    }
-
-    function normalizeColor(colorStr) {
-        if (!colorStr) return '';
-        try {
-            const el = document.createElement('div');
-            el.style.position = 'absolute';
-            el.style.left = '-9999px';
-            el.style.width = '1px';
-            el.style.height = '1px';
-            el.style.color = colorStr;
-            document.documentElement.appendChild(el);
-            const val = getComputedStyle(el).color || '';
-            el.remove();
-            return val.trim();
-        } catch (e) {
-            return colorStr;
-        }
-    }
 
     // Initialize persistent settings
     Object.values(TOOLS).forEach(tool => {
@@ -239,72 +144,63 @@
         Object.values(menuIds).forEach(id => {
             try { if (id) GM_unregisterMenuCommand(id); } catch (e) { /* ignore */ }
         });
-
         menuIds = {};
 
         menuIds.activateAll = GM_registerMenuCommand('✅Activate All A11y Tools', () => {
-            const container = document.body;
-
-            Object.values(TOOLS).forEach(tool => {
-                const isActive = shouldAutoRun
-                ? GM_getValue(tool.key, false)
-                : tempToolStates[tool.key] ?? false;
-
-                if (isActive) {
-                    tool.remove(container);
-                }
-            });
-
-            Object.values(TOOLS).forEach(tool => {
-                if (shouldAutoRun) {
-                    GM_setValue(tool.key, true);
-                } else {
-                    tempToolStates[tool.key] = true;
-                }
-                tool.run(container);
-            });
-
-            updateMenuCommands();
+            runAll();
         });
 
         menuIds.removeAll = GM_registerMenuCommand('❌Remove All A11y Tools', () => {
-            Object.values(TOOLS).forEach(tool => {
-                if (shouldAutoRun) {
-                    GM_setValue(tool.key, false);
-                } else {
-                    tempToolStates[tool.key] = false;
-                }
-                tool.remove();
-            });
-            document.querySelectorAll('.AccessibilityHelper').forEach(e => e.remove());
-            updateMenuCommands();
+            removeAll();
         });
 
         Object.values(TOOLS).forEach(tool => {
-            const state = shouldAutoRun
-            ? GM_getValue(tool.key, true)
-            : tempToolStates[tool.key] ?? false;
-
-            menuIds[tool.id] = GM_registerMenuCommand(`${state ? '🟩' : '⬜'}${tool.label}: ${state ? 'ON' : 'OFF'}`, () => {
-                toggleFeature(tool);
-            });
+            const state = getToolState(tool);
+            menuIds[tool.id] = GM_registerMenuCommand(
+                `${state ? '🟩' : '⬜'} ${tool.label}: ${state ? 'ON' : 'OFF'}`,
+                () => toggleTool(tool)
+            );
         });
     }
 
-    function toggleFeature(tool) {
-        const isPersistent = shouldAutoRun;
-        const currentState = isPersistent
-        ? GM_getValue(tool.key, true)
-        : tempToolStates[tool.key] ?? false;
+    function runAll() {
+        const container = document.body;
+        Object.values(TOOLS).forEach(tool => tool.remove());
+        Object.values(TOOLS).forEach(tool => {
+            setToolState(tool, true);
+            tool.run(container);
+        });
+        updateMenuCommands();
+    }
 
+    function removeAll() {
+        Object.values(TOOLS).forEach(tool => {
+            setToolState(tool, false);
+            tool.remove();
+        });
+        document.querySelectorAll('.AccessibilityHelper').forEach(e => e.remove());
+        updateMenuCommands();
+    }
+
+    function getToolState(tool) {
+        return shouldAutoRun
+            ? GM_getValue(tool.key, false)
+        : tempToolStates[tool.key] ?? false;
+    }
+
+    function setToolState(tool, value) {
+        if (shouldAutoRun) {
+            GM_setValue(tool.key, value);
+        } else {
+            tempToolStates[tool.key] = value;
+        }
+    }
+
+    function toggleTool(tool) {
+        const currentState = getToolState(tool);
         const newState = !currentState;
 
-        if (isPersistent) {
-            GM_setValue(tool.key, newState);
-        } else {
-            tempToolStates[tool.key] = newState;
-        }
-
+        setToolState(tool, newState);
         updateMenuCommands();
 
         try {
@@ -316,70 +212,128 @@
         } catch (e) { /* ignore */ }
     }
 
+    function keyHandler(e) {
+        try {
+            if (e.code === 'NumpadAdd' || e.keyCode === 107) {
+                runAll();
+                return;
+            }
+            if (e.code === 'NumpadSubtract' || e.keyCode === 109) {
+                removeAll();
+                return;
+            }
+        } catch (err) { /* ignore */ }
+    }
+    document.addEventListener('keydown', keyHandler, true);
+
     // Helper functions
-    function isVisible(el) {
+    function isActuallyVisible(el) {
+        /* //Old version without bounding box checking:
+     function isActuallyVisible(el) {
+        if (!el.offsetParent) return false;
+        if (getComputedStyle(el).visibility === 'hidden') return false;
+        let current = el;
+        while (current) {
+            if (current.closest('.AccessibilityHelper')) return false;
+            if (current.tagName === 'DETAILS' && !current.open) return false;
+            const style = getComputedStyle(current);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            current = current.parentElement;
+        }
+        return true;
+    }
+        */
+        // Must be an element
         if (!(el instanceof Element)) return false;
+
+        // Own visibility
         const cs = getComputedStyle(el);
-        if (cs.display === 'none' || cs.visibility === 'hidden') return false;
-        const r = el.getBoundingClientRect();
-        return !!(el.offsetParent || r.width > 0 || r.height > 0);
+        if (cs.visibility === 'hidden') return false;
+
+        // Element's bounding rect
+        const rect = el.getBoundingClientRect();
+
+        // Skip if element is outside the viewport
+        if (rect.width === 0 || rect.height === 0) return false;
+
+        let current = el;
+        while (current) {
+            // Skip if inside AccessibilityHelper
+            if (current.closest('.AccessibilityHelper')) return false;
+
+            // Skip collapsed details
+            if (current.tagName === 'DETAILS' && !current.open) return false;
+
+            const style = getComputedStyle(current);
+
+            // Skip invisible elements
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+
+            // Skip elements with class names containing "screenreadercontent"
+            if (current.className && current.className.toString().toLowerCase().includes('screenreadercontent')) return false;
+
+            // Check scrollable ancestor clipping
+            if (style.overflow === 'auto' || style.overflow === 'scroll' || style.overflowX === 'auto' || style.overflowY === 'auto' || style.overflowX === 'scroll' || style.overflowY === 'scroll') {
+                const parentRect = current.getBoundingClientRect();
+                // If the element's rect is completely outside the parent's content box
+                if (
+                    rect.bottom < parentRect.top ||
+                    rect.top > parentRect.bottom ||
+                    rect.right < parentRect.left ||
+                    rect.left > parentRect.right
+                ) {
+                    return false;
+                }
+            }
+
+            current = current.parentElement;
+        }
+
+        return true;
     }
 
-    function isVisuallyHidden(el) {
-        const style = getComputedStyle(el);
-        if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0' || el.hidden) {
-            return true;
-        }
-        const clip = style.clip || style.clipPath;
-        if (clip && (clip === 'rect(0 0 0 0)' || clip === 'rect(0px, 0px, 0px, 0px)' || clip === 'none')) {
-            return true;
-        }
-        const width = parseFloat(style.width);
-        const height = parseFloat(style.height);
-        if ((width <= 1 && height <= 1) && style.overflow === 'hidden') {
-            return true;
-        }
-        if (style.position === 'absolute') {
-            const rect = el.getBoundingClientRect();
-            if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= window.innerWidth || rect.top >= window.innerHeight) {
-                return true;
-            }
-        }
-        let parent = el.parentElement;
-        while (parent) {
-            if (parent.hasAttribute('aria-hidden') && parent.getAttribute('aria-hidden').toLowerCase() === 'true') {
-                return true;
-            }
-            if (parent.tagName.toLowerCase() === 'details' && !parent.hasAttribute('open')) {
-                return true;
-            }
-            parent = parent.parentElement;
-        }
-        return false;
-    }
+    const updateFunctions = [];
 
     // Tool implementations
     function runImageAltOverlay(container) {
-        const toolKey = 'a11y_img';
+        const tool = TOOLS.IMG; // or TOOLS['IMG']
+        const toolKey = tool.key;
 
-        document.querySelectorAll('img').forEach(img => {
-            delete img._a11yImgProcessed;
-        });
+        // Create or get the main overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
+            document.body.appendChild(overlayContainer);
+        }
+        overlayContainer.innerHTML = ''; // Clear any existing overlays
 
         function scanImages() {
-            container.querySelectorAll('img').forEach(function (img) {
+            const images = container.querySelectorAll('img');
+            images.forEach(img => {
+                if (img.closest('.AccessibilityHelper')) return; // skip overlays
                 if (img._a11yImgProcessed) return;
                 img._a11yImgProcessed = true;
 
-                const roleAttr = (img.getAttribute && (img.getAttribute('role') || '')).toString().toLowerCase();
-                const alt = roleAttr === 'presentation' ? '[Decorative]' : (img.alt ? img.alt.trim() : '[Missing]');
+                const roleAttr = (img.getAttribute && (img.getAttribute('role') || '')).toLowerCase();
+                const altText = roleAttr === 'presentation' ? '[Decorative]' : (img.alt?.trim() || '[Missing]');
 
-                const label = makeLabel(toolKey, 'A11y-img-label', 'Alt Text: ' + alt);
-                const border = makeBorder(toolKey, 'A11y-img-border');
+                // Create label
+                const label = document.createElement('div');
+                label.className = 'A11y-img-label';
+                label.textContent = 'Alt Text: ' + altText;
+                overlayContainer.appendChild(label);
+
+                // Create border
+                const border = document.createElement('div');
+                border.className = 'A11y-img-border';
+                overlayContainer.appendChild(border);
 
                 function updatePositions() {
                     const r = img.getBoundingClientRect();
-                    if (isVisible(img)) {
+                    const visible = isActuallyVisible(img);
+                    if (visible) {
                         label.style.display = 'block';
                         border.style.display = 'block';
                         label.style.top = window.scrollY + r.top - label.offsetHeight - 8 + 'px';
@@ -394,13 +348,13 @@
                     }
                 }
 
+                // Highlight on hover
                 function highlight() {
                     border.style.borderColor = '#393';
                     border.style.boxShadow = '1px 2px 5px #CCC';
                     label.style.borderColor = '#393';
                     label.style.boxShadow = '1px 2px 5px #CCC';
                 }
-
                 function unhighlight() {
                     border.style.borderColor = '#CCC';
                     border.style.boxShadow = 'none';
@@ -408,90 +362,149 @@
                     label.style.boxShadow = 'none';
                 }
 
-                addListener(toolKey, img, 'mouseover', highlight);
-                addListener(toolKey, img, 'mouseout', unhighlight);
-                addListener(toolKey, label, 'mouseover', highlight);
-                addListener(toolKey, label, 'mouseout', unhighlight);
+                img.addEventListener('mouseover', highlight);
+                img.addEventListener('mouseout', unhighlight);
+                img._highlightFunction = highlight;
+                img._unhighlightFunction = unhighlight;
+                label.addEventListener('mouseover', highlight);
+                label.addEventListener('mouseout', unhighlight);
 
                 updatePositions();
-                attachAutoUpdate(toolKey, updatePositions, { attributeFilter: ['style', 'class', 'hidden', 'src', 'alt', 'role'] });
+
+                // Watch for changes to the image and update position
+                const imgObserver = new MutationObserver(updatePositions);
+                imgObserver.observe(img, { attributes: true, attributeFilter: ['src', 'alt', 'role', 'style', 'class', 'hidden'] });
+                img._a11yImgObserver = imgObserver;
+                img._updateFunction = updatePositions;
+
+                // Also update positions on scroll or resize
+                document.addEventListener('scroll', img._updateFunction, { capture: true, passive: true });
+                document.addEventListener('resize', img._updateFunction);
+                updateFunctions.push(img._updateFunction);
             });
         }
 
-        const debouncedScan = debounce(scanImages, 120);
-        const observer = new MutationObserver((mutations) => {
-            debouncedScan();
-        });
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['src', 'alt', 'role']
-        });
-        addObserver(toolKey, observer);
-
         scanImages();
+
+        // Observe DOM changes to catch new images
+        if (overlayContainer._observer) {
+            overlayContainer._observer.disconnect();
+        }
+        const observer = new MutationObserver(scanImages);
+        observer.observe(container, { childList: true, subtree: true });
+        overlayContainer._observer = observer; // keep reference for removal
     }
 
     function removeImageAltOverlay() {
-        cleanupTool('a11y_img');
-        document.querySelectorAll('.A11y-img-label, .A11y-img-border').forEach(el => el.remove());
+        const tool = TOOLS.IMG; // or TOOLS['IMG']
+        const toolKey = tool.key;
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (overlayContainer) {
+            if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            overlayContainer.remove();
+        }
+        document.querySelectorAll('img').forEach(img => {
+            if (img._a11yImgObserver) {
+                img._a11yImgObserver.disconnect();
+                delete img._a11yImgObserver;
+            }
+            document.removeEventListener('scroll', img._updateFunction, { capture: true, passive: true });
+            document.removeEventListener('resize', img._updateFunction);
+            img.removeEventListener('mouseover', img._highlightFunction);
+            img.removeEventListener('mouseout', img._unhighlightFunction);
+            const index = updateFunctions.indexOf(img._updateFunction);
+            if (index > -1) updateFunctions.splice(index, 1);
+            delete img._updateFunction;
+            delete img._highlightFunction;
+            delete img._unhighlightFunction;
+            delete img._a11yImgProcessed;
+        });
     }
 
     function runIframeLabelOverlay(container) {
-        const toolKey = 'a11y_iframe';
-        const processedIframes = new Set();
+        const tool = TOOLS.IFRAME;
+        const toolKey = tool.key;
+
+        // Create or get overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
+            document.body.appendChild(overlayContainer);
+        }
+
+        overlayContainer.innerHTML = '';
+
+        function getLabelText(f) {
+            let title = f.title?.trim() || '[Empty]';
+
+            let ariaLabel = f.getAttribute('aria-label');
+            let ariaLabelFrom = '';
+            if (!ariaLabel && f.hasAttribute('aria-labelledby')) {
+                ariaLabel = f.getAttribute('aria-labelledby')
+                    .split(' ')
+                    .map(id => document.getElementById(id)?.textContent?.trim() || '[Missing]')
+                    .join(', ');
+                ariaLabelFrom = ' (uses labelledby)';
+            }
+            if (!ariaLabel) ariaLabel = '[Missing]';
+
+            let ariaDesc = f.getAttribute('aria-description');
+            let ariaDescFrom = '';
+            if (!ariaDesc && f.hasAttribute('aria-describedby')) {
+                ariaDesc = f.getAttribute('aria-describedby')
+                    .split(' ')
+                    .map(id => document.getElementById(id)?.textContent?.trim() || '[Empty]')
+                    .join(', ');
+                ariaDescFrom = ' (uses describedby)';
+            }
+            if (!ariaDesc) ariaDesc = '[Empty]';
+
+            const ariaLabelEmoji = ariaLabel !== '[Missing]' ? '🔊' : '🔇';
+            const ariaDescEmoji = ariaDesc !== '[Empty]' ? '🔊' : '🔇';
+            const titleEmoji =
+                  title !== '[Empty]' && ariaLabel === '[Missing]' && ariaDesc === '[Empty]'
+            ? '🔊'
+            : '🔇';
+
+            const ariaLabelColor = ariaLabel !== '[Missing]' ? '#060' : '#c00';
+            const ariaDescColor = ariaDesc !== '[Empty]' ? '#c00' : '#060';
+            const titleColor = titleEmoji === '🔊' ? '#c00' : '#060';
+
+            return (
+                `<span style="color:${ariaLabelColor}">${ariaLabelEmoji} Aria-label: ${ariaLabel}${ariaLabelFrom}</span>\n` +
+                `<span style="color:${ariaDescColor}">${ariaDescEmoji} Aria-description: ${ariaDesc}${ariaDescFrom}</span>\n` +
+                `<span style="color:${titleColor}">${titleEmoji} Title: ${title}</span>`
+            );
+        }
 
         function scanIframes() {
-            container.querySelectorAll('iframe').forEach(function (f) {
-                if (processedIframes.has(f)) return;
-                processedIframes.add(f);
-
-                let title = f.title || '[Missing]';
-                let ariaLabel = f.getAttribute('aria-label');
-                let ariaLabelUsedFrom = '';
-                if (!ariaLabel && f.hasAttribute('aria-labelledby')) {
-                    const ids = f.getAttribute('aria-labelledby').split(' ');
-                    ariaLabel = ids.map(id => document.getElementById(id)?.textContent || '[Missing]').join(', ');
-                    ariaLabelUsedFrom = ' (uses labelledby)';
-                }
-                if (!ariaLabel) ariaLabel = '[Missing]';
-
-                let ariaDesc = f.getAttribute('aria-description');
-                let ariaDescUsedFrom = '';
-                if (!ariaDesc && f.hasAttribute('aria-describedby')) {
-                    const ids = f.getAttribute('aria-describedby').split(' ');
-                    ariaDesc = ids.map(id => document.getElementById(id)?.textContent || '[Missing]').join(', ');
-                    ariaDescUsedFrom = ' (uses describedby)';
-                }
-                if (!ariaDesc) ariaDesc = '[Missing]';
+            container.querySelectorAll('iframe').forEach(f => {
+                if (f.closest('.AccessibilityHelper')) return;
+                if (f._a11yIframeProcessed) return;
+                f._a11yIframeProcessed = true;
 
                 const label = document.createElement('div');
-                label.className = 'AccessibilityHelper A11y-iframe-label';
-                label.style.cssText = 'position:absolute;background:#FFF;border:3px solid #CCC;border-radius:7px;padding:5px;text-align:left;white-space:pre-wrap;width:300px;font-size:12px;z-index:9999;transition:all 0.2s ease;display:none;';
+                label.className = 'A11y-iframe-label';
+                label.innerHTML = getLabelText(f);
+                overlayContainer.appendChild(label);
 
-                const ariaLabelEmoji = ariaLabel !== '[Missing]' ? '🔊' : '🔇';
-                const ariaDescEmoji = ariaDesc !== '[Missing]' ? '🔊' : '🔇';
-                const titleEmoji = (title !== '[Missing]' && ariaLabel === '[Missing]' && ariaDesc === '[Missing]') ? '🔊' : '🔇';
+                const border = document.createElement('div');
+                border.className = 'A11y-iframe-border';
+                overlayContainer.appendChild(border);
 
-                label.textContent =
-                    `${ariaLabelEmoji}Aria-label: ${ariaLabel}${ariaLabelUsedFrom}\n` +
-                    `${ariaDescEmoji}Aria-description: ${ariaDesc}${ariaDescUsedFrom}\n` +
-                    `${titleEmoji}Title: ${title}`;
-
-
-
-                const border = document.createElement('span');
-                border.className = 'AccessibilityHelper A11y-iframe-border';
-                border.style.cssText = 'position:absolute;border:3px solid #CCC;border-radius:7px;z-index:9998;transition:all 0.2s ease;display:none;pointer-events:none;';
-
-                function update() {
+                function updatePositions() {
                     const r = f.getBoundingClientRect();
-                    if (isVisible(f)) {
+                    const visible = isActuallyVisible(f);
+
+                    if (visible) {
                         label.style.display = 'block';
                         border.style.display = 'block';
-                        label.style.top = window.scrollY + r.top - 8 + 'px';
-                        label.style.left = window.scrollX + r.left - 8 + 'px';
+
+                        label.style.top = window.scrollY + r.top - label.offsetHeight - 8 + 'px';
+                        label.style.left = window.scrollX + r.left + 'px';
+
                         border.style.top = window.scrollY + r.top - 8 + 'px';
                         border.style.left = window.scrollX + r.left - 8 + 'px';
                         border.style.width = r.width + 16 + 'px';
@@ -508,6 +521,7 @@
                     border.style.borderColor = '#393';
                     border.style.boxShadow = '1px 2px 5px #CCC';
                 }
+
                 function unhighlight() {
                     label.style.borderColor = '#CCC';
                     label.style.boxShadow = 'none';
@@ -515,72 +529,129 @@
                     border.style.boxShadow = 'none';
                 }
 
-                addListener(toolKey, label, 'mouseover', highlight);
-                addListener(toolKey, label, 'mouseout', unhighlight);
-                addListener(toolKey, border, 'mouseover', highlight);
-                addListener(toolKey, border, 'mouseout', unhighlight);
+                // Hover listeners
+                f.addEventListener('mouseover', highlight);
+                f.addEventListener('mouseout', unhighlight);
+                label.addEventListener('mouseover', highlight);
+                label.addEventListener('mouseout', unhighlight);
 
-                document.body.appendChild(label);
-                document.body.appendChild(border);
-                addContainer(toolKey, label);
-                addContainer(toolKey, border);
-                update();
-                addListener(toolKey, window, 'scroll', update, { passive: true });
-                addListener(toolKey, window, 'resize', update);
-                const mo_iframe = new MutationObserver(update);
-                mo_iframe.observe(document.body, {
-                    childList: true,
-                    subtree: true,
+                f._highlightFunction = highlight;
+                f._unhighlightFunction = unhighlight;
+
+                updatePositions();
+
+                // Observe attribute changes that affect accessible name or visibility
+                const iframeObserver = new MutationObserver(updatePositions);
+                iframeObserver.observe(f, {
                     attributes: true,
-                    attributeFilter: ['style', 'class', 'open']
+                    attributeFilter: [
+                        'title',
+                        'aria-label',
+                        'aria-labelledby',
+                        'aria-description',
+                        'aria-describedby',
+                        'style',
+                        'class',
+                        'hidden',
+                        'open'
+                    ]
                 });
-                addObserver(toolKey, mo_iframe);
+
+                f._a11yIframeObserver = iframeObserver;
+                f._updateFunction = updatePositions;
+
+                document.addEventListener('scroll', updatePositions, { capture: true, passive: true });
+                document.addEventListener('resize', updatePositions);
+                updateFunctions.push(updatePositions);
             });
         }
 
-        const debouncedScan = debounce(scanIframes, 120);
-        const observer = new MutationObserver((mutations) => {
-            debouncedScan();
-        });
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['title', 'aria-label', 'aria-description']
-        });
-        addObserver(toolKey, observer);
-
         scanIframes();
+
+        // Watch for new iframes
+        if (overlayContainer._observer) {
+            overlayContainer._observer.disconnect();
+        }
+
+        const observer = new MutationObserver(scanIframes);
+        observer.observe(container, { childList: true, subtree: true });
+        overlayContainer._observer = observer;
     }
 
     function removeIframeLabelOverlay() {
-        cleanupTool('a11y_iframe');
-        document.querySelectorAll('.A11y-iframe-label, .A11y-iframe-border').forEach(el => el.remove());
+        const tool = TOOLS.IFRAME;
+        const toolKey = tool.key;
+
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (overlayContainer) {
+            if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            overlayContainer.remove();
+        }
+
+        document.querySelectorAll('iframe').forEach(f => {
+            if (f._a11yIframeObserver) {
+                f._a11yIframeObserver.disconnect();
+                delete f._a11yIframeObserver;
+            }
+
+            document.removeEventListener('scroll', f._updateFunction, { capture: true, passive: true });
+            document.removeEventListener('resize', f._updateFunction);
+
+            f.removeEventListener('mouseover', f._highlightFunction);
+            f.removeEventListener('mouseout', f._unhighlightFunction);
+
+            const index = updateFunctions.indexOf(f._updateFunction);
+            if (index > -1) updateFunctions.splice(index, 1);
+
+            delete f._updateFunction;
+            delete f._highlightFunction;
+            delete f._unhighlightFunction;
+            delete f._a11yIframeProcessed;
+        });
     }
 
     function runHeadingTagOverlay(container) {
-        const toolKey = 'a11y_heading';
-        const processedHeadings = new Set();
+        const tool = TOOLS.HEADING; // or TOOLS['IMG']
+        const toolKey = tool.key;
 
-        function scanHeadings() {
-            ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].flatMap(tag => [...container.querySelectorAll(tag)]).forEach(h => {
-                if (processedHeadings.has(h)) return;
-                processedHeadings.add(h);
+        // Create or get the main overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
+            document.body.appendChild(overlayContainer);
+        }
+        overlayContainer.innerHTML = ''; // Clear any existing overlays
 
-                const label = makeLabel(toolKey, 'AccessibilityHelper-label A11y-heading-label', h.tagName);
-                const border = makeBorder(toolKey, 'AccessibilityHelper-border A11y-heading-border');
+        function scanHeaders() {
+            const headers = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            headers.forEach(h => {
+                if (h.closest('.AccessibilityHelper')) return; // skip overlays
+                if (h._a11yHeaderProcessed) return;
+                h._a11yHeaderProcessed = true;
 
-                function update() {
+                // Create label
+                const label = document.createElement('div');
+                label.className = 'A11y-header-label';
+                label.textContent = h.tagName;
+                overlayContainer.appendChild(label);
+
+                // Create border
+                const border = document.createElement('div');
+                border.className = 'A11y-header-border';
+                overlayContainer.appendChild(border);
+
+                function updatePositions() {
                     const r = h.getBoundingClientRect();
-                    if (isVisible(h)) {
+                    const visible = isActuallyVisible(h);
+                    if (visible) {
                         label.style.display = 'block';
                         border.style.display = 'block';
-                        const top = window.scrollY + r.top;
-                        const left = window.scrollX + r.left;
-                        label.style.top = top - 22 + 'px';
-                        label.style.left = left + 'px';
-                        border.style.top = top + 'px';
-                        border.style.left = left + 'px';
+                        label.style.top = window.scrollY + r.top - label.offsetHeight + 3 + 'px';
+                        label.style.left = window.scrollX + r.left + 'px';
+                        border.style.top = window.scrollY + r.top + 'px';
+                        border.style.left = window.scrollX + r.left + 'px';
                         border.style.width = r.width + 'px';
                         border.style.height = r.height + 'px';
                     } else {
@@ -589,269 +660,251 @@
                     }
                 }
 
+                // Highlight on hover
                 function highlight() {
-                    label.classList.add('AccessibilityHelper-highlight');
-                    border.classList.add('AccessibilityHelper-highlight');
+                    border.style.borderColor = '#393';
+                    border.style.boxShadow = '1px 2px 5px #CCC';
+                    label.style.borderColor = '#393';
+                    label.style.boxShadow = '1px 2px 5px #CCC';
                 }
-
                 function unhighlight() {
-                    label.classList.remove('AccessibilityHelper-highlight');
-                    border.classList.remove('AccessibilityHelper-highlight');
+                    border.style.borderColor = '#CCC';
+                    border.style.boxShadow = 'none';
+                    label.style.borderColor = '#CCC';
+                    label.style.boxShadow = 'none';
                 }
 
-                addListener(toolKey, label, 'mouseover', highlight);
-                addListener(toolKey, label, 'mouseout', unhighlight);
-                addListener(toolKey, h, 'mouseover', highlight);
-                addListener(toolKey, h, 'mouseout', unhighlight);
+                h.addEventListener('mouseover', highlight);
+                h.addEventListener('mouseout', unhighlight);
+                h._highlightFunction = highlight;
+                h._unhighlightFunction = unhighlight;
+                label.addEventListener('mouseover', highlight);
+                label.addEventListener('mouseout', unhighlight);
 
-                update();
-                attachAutoUpdate(toolKey, update, { attributeFilter: ['style', 'class', 'hidden', 'open'] });
+                updatePositions();
+
+                // Watch for changes to the image and update position
+                const headerObserver = new MutationObserver(updatePositions);
+                headerObserver.observe(h, { attributes: true, attributeFilter: ['style', 'class', 'hidden', 'open'] });
+                h._a11yHeaderObserver = headerObserver;
+                h._updateFunction = updatePositions;
+
+                // Also update positions on scroll or resize
+                document.addEventListener('scroll', h._updateFunction, { capture: true, passive: true });
+                document.addEventListener('resize', h._updateFunction);
+                updateFunctions.push(h._updateFunction);
             });
         }
 
-        const debouncedScan = debounce(scanHeadings, 120);
-        const observer = new MutationObserver((mutations) => {
-            debouncedScan();
-        });
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        addObserver(toolKey, observer);
+        scanHeaders();
 
-        scanHeadings();
+        // Observe DOM changes to catch new images
+        if (overlayContainer._observer) {
+            overlayContainer._observer.disconnect();
+        }
+        const observer = new MutationObserver(scanHeaders);
+        observer.observe(container, { childList: true, subtree: true });
+        overlayContainer._observer = observer; // keep reference for removal
     }
 
-    function removeHeadingOverlay() {
-        cleanupTool('a11y_heading');
-        document.querySelectorAll('.A11y-heading-label, .A11y-heading-border').forEach(el => el.remove());
+    function removeHeadingTagOverlay() {
+        const tool = TOOLS.HEADING; // or TOOLS['IMG']
+        const toolKey = tool.key;
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (overlayContainer) {
+            if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            overlayContainer.remove();
+        }
+        document.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+            if (h._a11yHeaderObserver) {
+                h._a11yHeaderObserver.disconnect();
+                delete h._a11yHeaderObserver;
+            }
+            document.removeEventListener('scroll', h._updateFunction, { capture: true, passive: true });
+            document.removeEventListener('resize', h._updateFunction);
+            h.removeEventListener('mouseover', h._highlightFunction);
+            h.removeEventListener('mouseout', h._unhighlightFunction);
+            const index = updateFunctions.indexOf(h._updateFunction);
+            if (index > -1) updateFunctions.splice(index, 1);
+            delete h._updateFunction;
+            delete h._highlightFunction;
+            delete h._unhighlightFunction;
+            delete h._a11yHeaderProcessed;
+        });
     }
 
-    function runIBTagOverlay(container) {
-        const toolKey = 'a11y_ib';
+    function runIBTagHighlights(container) {
+        const tool = TOOLS.IB; // or TOOLS['IB']
+        const toolKey = tool.key;
 
-        if (document.querySelector('.A11y-ib-border')) return;
+        // Create or get the main overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
+            document.body.appendChild(overlayContainer);
+        }
+        overlayContainer.innerHTML = '';
 
-        let ibOverlayContainer = document.getElementById('IBOverlay-container');
-        if (!ibOverlayContainer) {
-            ibOverlayContainer = document.createElement('div');
-            ibOverlayContainer.id = 'IBOverlay-container';
-            Object.assign(ibOverlayContainer.style, {
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: 9999
-            });
-            document.body.appendChild(ibOverlayContainer);
-            addContainer(toolKey, ibOverlayContainer);
-            document.querySelectorAll('.AccessibilityHelper-border.A11y-ib-border').forEach(e => e.remove());
+        function hasText(el) {
+            return Array.from(el.childNodes)
+                .filter(n => n.nodeType === Node.TEXT_NODE)
+                .map(n => n.textContent.trim())
+                .join('').length > 0;
         }
 
         function scanIB() {
+            const nodes = container.querySelectorAll('i, b');
 
-            const nodes = Array.from(container.querySelectorAll('i, b'));
             nodes.forEach(el => {
-                const text = Array.from(el.childNodes)
-                .filter(node => node.nodeType === Node.TEXT_NODE)
-                .map(node => node.textContent.trim())
-                .join('');
-                if (!text || isVisuallyHidden(el)) return;
+                if (el.closest('.AccessibilityHelper')) return;
+                if (el._a11yIBProcessed) return;
+                if (!hasText(el)) return;
 
-                const border = makeBorder(toolKey, 'IBOverlay-border A11y-ib-border');
-                ibOverlayContainer.appendChild(border);
-                border._a11yTarget = el;
+                el._a11yIBProcessed = true;
 
-                function highlight() { border.classList.add('IBOverlay-highlight'); }
-                function unhighlight() { border.classList.remove('IBOverlay-highlight'); }
+                // Create border
+                const border = document.createElement('div');
+                border.className = 'A11y-ib-border';
+                overlayContainer.appendChild(border);
 
-                addListener(toolKey, el, 'mouseover', highlight);
-                addListener(toolKey, el, 'mouseout', unhighlight);
+                function updatePosition() {
+                    const r = el.getBoundingClientRect();
+                    const visible = isActuallyVisible(el);
+
+                    if (visible) {
+                        border.style.display = 'block';
+                        border.style.top = Math.round(window.scrollY + r.top - 4) + 'px';
+                        border.style.left = Math.round(window.scrollX + r.left - 4) + 'px';
+                        border.style.width = Math.round(r.width + 8) + 'px';
+                        border.style.height = Math.round(r.height + 8) + 'px';
+                    } else {
+                        border.style.display = 'none';
+                    }
+                }
+
+                function highlight() {
+                    border.classList.add('A11y-ib-highlight');
+                }
+
+                function unhighlight() {
+                    border.classList.remove('A11y-ib-highlight');
+                }
+
+                el.addEventListener('mouseover', highlight);
+                el.addEventListener('mouseout', unhighlight);
+
+                el._highlightFunction = highlight;
+                el._unhighlightFunction = unhighlight;
+                el._updateFunction = updatePosition;
+
+                updatePosition();
+
+                // Observe attribute changes on the element
+                const observer = new MutationObserver(updatePosition);
+                observer.observe(el, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class', 'hidden']
+                });
+
+                el._a11yIBObserver = observer;
+
+                // Global updates
+                document.addEventListener('scroll', updatePosition, { capture: true, passive: true });
+                document.addEventListener('resize', updatePosition);
+                updateFunctions.push(updatePosition);
             });
-
-            updateAllIBBorders();
         }
-
-        function updateAllIBBorders() {
-            document.querySelectorAll('.A11y-ib-border').forEach(border => {
-                const el = border._a11yTarget;
-                if (!el) {
-                    border.remove();
-                    return;
-                }
-                if (!document.contains(el)) {
-                    border.remove();
-                    return;
-                }
-                const r = el.getBoundingClientRect();
-                if (isVisible(el)) {
-                    border.style.display = 'block';
-                    const top = Math.round(r.top - 4);
-                    const left = Math.round(r.left - 4);
-                    const width = Math.round(r.width + 8);
-                    const height = Math.round(r.height + 8);
-                    border.style.top = `${top}px`;
-                    border.style.left = `${left}px`;
-                    border.style.width = `${width}px`;
-                    border.style.height = `${height}px`;
-                } else {
-                    border.style.display = 'none';
-                }
-            });
-        }
-
-        const debouncedScanIB = debounce(scanIB, 120);
-        addListener(toolKey, window, 'scroll', debounce(updateAllIBBorders, 60), { passive: true });
-        addListener(toolKey, window, 'resize', debounce(updateAllIBBorders, 60));
-        const sharedIBObserver = new MutationObserver(debouncedScanIB);
-        sharedIBObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
-        addObserver(toolKey, sharedIBObserver);
 
         scanIB();
-    }
 
-    function removeIBHighlights() {
-        cleanupTool('a11y_ib');
-        const borders = document.querySelectorAll('.A11y-ib-border');
-        borders.forEach(el => el.remove());
-    }
-
-    function highlightContrastFailures(container) {
-        const toolKey = 'a11y_contrast';
-        let contrastOverlayContainer = document.getElementById('ContrastOverlay-container');
-        if (!contrastOverlayContainer) {
-            contrastOverlayContainer = document.createElement('div');
-            contrastOverlayContainer.id = 'ContrastOverlay-container';
-            Object.assign(contrastOverlayContainer.style, {
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: 9999
-            });
-            document.body.appendChild(contrastOverlayContainer);
-            addContainer(toolKey, contrastOverlayContainer);
+        // Watch DOM for new i / b tags
+        if (overlayContainer._observer) {
+            overlayContainer._observer.disconnect();
         }
 
-        const visited = new Set();
+        const observer = new MutationObserver(scanIB);
+        observer.observe(container, { childList: true, subtree: true });
+        overlayContainer._observer = observer;
+    }
 
-        function scanContrast() {
-            document.querySelectorAll('.ContrastOverlay-border').forEach(b => b.remove());
+    function removeIBTagHighlights() {
+        const tool = TOOLS.IB;
+        const toolKey = tool.key;
 
-            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
-                acceptNode(node) {
-                    if (!node || !node.nodeValue) return NodeFilter.FILTER_REJECT;
-                    if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-                    const p = node.parentElement;
-                    if (!p) return NodeFilter.FILTER_REJECT;
-                    if (visited.has(p)) return NodeFilter.FILTER_REJECT;
-                    const cs = getComputedStyle(p);
-                    if (cs.visibility === 'hidden' || cs.display === 'none' || cs.opacity === '0' || p.hidden) return NodeFilter.FILTER_REJECT;
-                    return NodeFilter.FILTER_ACCEPT;
-                }
-            }, false);
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (overlayContainer) {
+            if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            overlayContainer.remove();
+        }
 
-            visited.clear();
-            const toProcess = [];
-            while (walker.nextNode()) {
-                const p = walker.currentNode.parentElement;
-                if (p && !visited.has(p)) {
-                    visited.add(p);
-                    toProcess.push(p);
-                }
+        document.querySelectorAll('i, b').forEach(el => {
+            if (el._a11yIBObserver) {
+                el._a11yIBObserver.disconnect();
+                delete el._a11yIBObserver;
             }
 
-            toProcess.forEach(el => {
-                const style = window.getComputedStyle(el);
-                const text = Array.from(el.childNodes)
-                .filter(node => node.nodeType === Node.TEXT_NODE)
-                .map(node => node.textContent.trim())
-                .join('');
+            document.removeEventListener('scroll', el._updateFunction, { capture: true, passive: true });
+            document.removeEventListener('resize', el._updateFunction);
 
-                if (!text || isVisuallyHidden(el)) return;
+            el.removeEventListener('mouseover', el._highlightFunction);
+            el.removeEventListener('mouseout', el._unhighlightFunction);
 
-                const color = getEffectiveColor(el, 'color');
-                const bg = getEffectiveBackground(el);
-                const ratio = contrastRatio(color, bg);
+            const idx = updateFunctions.indexOf(el._updateFunction);
+            if (idx > -1) updateFunctions.splice(idx, 1);
 
-                const fontSize = parseFloat(style.fontSize) || 0;
-                const fontWeight = parseInt(style.fontWeight, 10) || 400;
-                const isLargeText = fontSize >= 18 || (fontSize >= 14 && fontWeight >= 700);
-                const threshold = isLargeText ? 3.0 : 4.5;
+            delete el._updateFunction;
+            delete el._highlightFunction;
+            delete el._unhighlightFunction;
+            delete el._a11yIBProcessed;
+        });
+    }
 
-                if (ratio < threshold) {
-                    const border = makeBorder(toolKey, 'ContrastOverlay-border A11y-contrast-border');
-                    contrastOverlayContainer.appendChild(border);
-                    border._a11yTarget = el;
+    function runContrastHighlights(container) {
+        const tool = TOOLS.CONTRAST;
+        const toolKey = tool.key;
 
-                    function update() {
-                        const r = el.getBoundingClientRect();
-                        if (isVisible(el)) {
-                            border.style.display = 'block';
-                            const top = Math.round(r.top - 4);
-                            const left = Math.round(r.left - 4);
-                            const width = Math.round(r.width + 8);
-                            const height = Math.round(r.height + 8);
-                            border.style.top = `${top}px`;
-                            border.style.left = `${left}px`;
-                            border.style.width = `${width}px`;
-                            border.style.height = `${height}px`;
-                        } else {
-                            border.style.display = 'none';
-                        }
-                    }
-
-                    function highlight() { border.classList.add('ContrastOverlay-highlight'); }
-                    function unhighlight() { border.classList.remove('ContrastOverlay-highlight'); }
-
-                    addListener(toolKey, el, 'mouseover', highlight);
-                    addListener(toolKey, el, 'mouseout', unhighlight);
-                }
-            });
-
-            updateAllBorders();
+        // Create or get overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
+            document.body.appendChild(overlayContainer);
         }
 
-        function updateAllBorders() {
-            document.querySelectorAll('.ContrastOverlay-border').forEach(border => {
-                const el = border._a11yTarget;
-                if (!el) return;
-                const r = el.getBoundingClientRect();
-                if (isVisible(el)) {
-                    border.style.display = 'block';
-                    const top = Math.round(r.top - 4);
-                    const left = Math.round(r.left - 4);
-                    const width = Math.round(r.width + 8);
-                    const height = Math.round(r.height + 8);
-                    border.style.top = `${top}px`;
-                    border.style.left = `${left}px`;
-                    border.style.width = `${width}px`;
-                    border.style.height = `${height}px`;
-                } else {
-                    border.style.display = 'none';
-                }
-            });
+        overlayContainer.innerHTML = '';
+        if (overlayContainer._trackedElements) {
+            overlayContainer._trackedElements.clear();
+        } else {
+            overlayContainer._trackedElements = new Set();
         }
 
-        const debouncedScan = debounce(scanContrast, 120);
-        addListener(toolKey, window, 'scroll', debounce(updateAllBorders, 60), { passive: true });
-        addListener(toolKey, window, 'resize', debounce(updateAllBorders, 60));
-        const sharedObserver = new MutationObserver(debouncedScan);
-        sharedObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
-        addObserver(toolKey, sharedObserver);
+        // ----------------------------
+        // Contrast math helpers
+        // ----------------------------
 
-        scanContrast();
+        function isFullyTransparent(color) {
+            if (!color) return true;
 
-        function contrastRatio(rgb1, rgb2) {
-            const [r1, g1, b1] = (rgb1.match(/\d+/g) || [0,0,0]).map(Number);
-            const [r2, g2, b2] = (rgb2.match(/\d+/g) || [255,255,255]).map(Number);
-            const lum1 = luminance(r1, g1, b1);
-            const lum2 = luminance(r2, g2, b2);
-            return lum1 > lum2 ? (lum1 + 0.05) / (lum2 + 0.05) : (lum2 + 0.05) / (lum1 + 0.05);
+            if (color === 'transparent') return true;
+
+            if (color.startsWith('rgba')) {
+                const parts = color.match(/[\d.]+/g);
+                if (!parts) return false;
+                const alpha = parseFloat(parts[3]);
+                return alpha === 0;
+            }
+
+            if (color.startsWith('hsla')) {
+                const parts = color.match(/[\d.]+/g);
+                if (!parts) return false;
+                const alpha = parseFloat(parts[3]);
+                return alpha === 0;
+            }
+
+            return false;
         }
 
         function luminance(r, g, b) {
@@ -862,259 +915,585 @@
             return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
         }
 
-        function resolveColor(el, property) {
+        function contrastRatio(rgb1, rgb2) {
+            const [r1, g1, b1] = rgb1.match(/\d+/g).map(Number);
+            const [r2, g2, b2] = rgb2.match(/\d+/g).map(Number);
+
+            const l1 = luminance(r1, g1, b1);
+            const l2 = luminance(r2, g2, b2);
+
+            return l1 > l2
+                ? (l1 + 0.05) / (l2 + 0.05)
+            : (l2 + 0.05) / (l1 + 0.05);
+        }
+
+        function getEffectiveColor(el) {
             let current = el;
+
             while (current && current !== document.documentElement) {
-                try {
-                    const cs = getComputedStyle(current);
-                    let value = cs.getPropertyValue(property).trim();
-                    if (value && value !== 'transparent') {
-                        const normalized = normalizeColor(value);
-                        if (normalized) return normalized;
-                    }
-                } catch (e) { /* ignore */ }
+                const c = getComputedStyle(current).color;
+                if (c && c !== 'transparent') return c;
                 current = current.parentElement;
             }
-            try {
-                const bodyVal = getComputedStyle(document.body).getPropertyValue(property).trim();
-                return normalizeColor(bodyVal);
-            } catch (e) {
-                return '';
-            }
+
+            return getComputedStyle(document.body).color || 'rgb(0,0,0)';
         }
 
         function getEffectiveBackground(el) {
             let current = el;
+
             while (current && current !== document.documentElement) {
-                const bg = window.getComputedStyle(current).backgroundColor;
-                if (bg && !bg.startsWith('rgba(0, 0, 0, 0)') && bg !== 'transparent') {
-                    return normalizeColor(bg);
+                const bg = getComputedStyle(current).backgroundColor;
+
+                if (bg && !isFullyTransparent(bg)) {
+                    return bg;
                 }
+
                 current = current.parentElement;
             }
-            return normalizeColor(window.getComputedStyle(document.body).backgroundColor || 'rgb(255,255,255)');
+
+            return getComputedStyle(document.body).backgroundColor || 'rgb(255,255,255)';
         }
 
-        function getEffectiveColor(el, property = 'color') {
-            let current = el;
-            while (current && current !== document.documentElement) {
-                const color = resolveColor(current, property);
-                if (color && color !== 'transparent') {
-                    return color;
-                }
-                current = current.parentElement;
-            }
-            return resolveColor(document.body, property) || 'rgb(0,0,0)';
+        function passesContrast(el) {
+            const style = getComputedStyle(el);
+            const color = getEffectiveColor(el);
+            const bg = getEffectiveBackground(el);
+
+            const ratio = contrastRatio(color, bg);
+
+            const fontSize = parseFloat(style.fontSize) || 0;
+            const fontWeight = parseInt(style.fontWeight, 10) || 400;
+
+            const isLargeText =
+                  fontSize >= 18 ||
+                  (fontSize >= 14 && fontWeight >= 700);
+
+            const threshold = isLargeText ? 3.0 : 4.5;
+
+            return ratio >= threshold;
         }
+
+        // ----------------------------
+        // Scanner
+        // ----------------------------
+
+        function scanContrast() {
+            const walker = document.createTreeWalker(
+                container,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode(node) {
+                        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+
+                        const parent = node.parentElement;
+                        if (!parent) return NodeFilter.FILTER_REJECT;
+
+                        if (!isActuallyVisible(parent)) return NodeFilter.FILTER_REJECT;
+
+                        if (
+                            parent.closest('.AccessibilityHelper') ||
+                            parent.closest('.AccessibilityHelper') ||
+                            parent.closest('.sr-only, .screenreader-only')
+                        ) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+            );
+
+            const processedParents = new Set();
+
+            while (walker.nextNode()) {
+                const el = walker.currentNode.parentElement;
+                if (!el || processedParents.has(el)) continue;
+
+                processedParents.add(el);
+
+                if (el._a11yContrastProcessed) continue;
+                if (!isActuallyVisible(el)) continue;
+
+                const text = Array.from(el.childNodes)
+                .filter(n => n.nodeType === Node.TEXT_NODE)
+                .map(n => n.textContent.trim())
+                .join('');
+
+                if (!text) continue;
+
+                if (passesContrast(el)) continue;
+
+                el._a11yContrastProcessed = true;
+                overlayContainer._trackedElements.add(el);
+
+                // ----------------------------
+                // Create border
+                // ----------------------------
+
+                const border = document.createElement('div');
+                border.className = 'A11y-contrast-border';
+                overlayContainer.appendChild(border);
+
+                function updatePosition() {
+                    const r = el.getBoundingClientRect();
+
+                    if (isActuallyVisible(el)) {
+                        if (passesContrast(el)) {
+                            border.style.display = 'none';
+                            return;
+                        }
+                        border.style.display = 'block';
+                        border.style.top = Math.round(window.scrollY + r.top - 4) + 'px';
+                        border.style.left = Math.round(window.scrollX + r.left - 4) + 'px';
+                        border.style.width = Math.round(r.width + 8) + 'px';
+                        border.style.height = Math.round(r.height + 8) + 'px';
+                    } else {
+                        border.style.display = 'none';
+                    }
+                }
+
+                function highlight() {
+                    border.classList.add('A11y-contrast-highlight');
+                }
+
+                function unhighlight() {
+                    border.classList.remove('A11y-contrast-highlight');
+                }
+
+                // Store references
+                el._contrastBorder = border;
+                el._contrastUpdate = updatePosition;
+                el._contrastHighlight = highlight;
+                el._contrastUnhighlight = unhighlight;
+
+                // Event listeners
+                el.addEventListener('mouseover', highlight);
+                el.addEventListener('mouseout', unhighlight);
+
+                // Attribute observer
+                const attrObserver = new MutationObserver(updatePosition);
+                attrObserver.observe(el, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class', 'hidden']
+                });
+
+                el._contrastObserver = attrObserver;
+
+                // Global updates
+                document.addEventListener('scroll', updatePosition, { capture: true, passive: true });
+                document.addEventListener('resize', updatePosition);
+
+                updateFunctions.push(updatePosition);
+
+                updatePosition();
+            }
+        }
+
+        // Initial scan
+        scanContrast();
+
+        // Watch DOM for new text
+        if (overlayContainer._observer) {
+            overlayContainer._observer.disconnect();
+        }
+
+        const domObserver = new MutationObserver(scanContrast);
+        domObserver.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true, // catch style/class changes
+            attributeFilter: ['style', 'class', 'open', 'hidden'] //optional more
+        });
+
+        overlayContainer._observer = domObserver;
     }
 
     function removeContrastHighlights() {
-        cleanupTool('a11y_contrast');
-        document.querySelectorAll('.ContrastOverlay-border').forEach(el => el.remove());
+        const tool = TOOLS.CONTRAST;
+        const toolKey = tool.key;
+
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (overlayContainer) {
+            if (overlayContainer._observer) {
+                overlayContainer._observer.disconnect();
+            }
+            const trackedElements = overlayContainer._trackedElements;
+
+            if (trackedElements) {
+                trackedElements.forEach(el => {
+                    if (el._contrastObserver) {
+                        el._contrastObserver.disconnect();
+                        delete el._contrastObserver;
+                    }
+
+                    document.removeEventListener('scroll', el._contrastUpdate, { capture: true, passive: true });
+                    document.removeEventListener('resize', el._contrastUpdate);
+
+                    el.removeEventListener('mouseover', el._contrastHighlight);
+                    el.removeEventListener('mouseout', el._contrastUnhighlight);
+
+                    const idx = updateFunctions.indexOf(el._contrastUpdate);
+                    if (idx > -1) updateFunctions.splice(idx, 1);
+
+                    if (el._contrastBorder) {
+                        el._contrastBorder.remove();
+                    }
+
+                    delete el._contrastBorder;
+                    delete el._contrastUpdate;
+                    delete el._contrastHighlight;
+                    delete el._contrastUnhighlight;
+                    delete el._a11yContrastProcessed;
+                });
+                trackedElements.clear();
+            }
+            overlayContainer.remove();
+        }
+
     }
 
-    function runLangOverlay(container) {
-        const toolKey = 'a11y_lang';
+    function runLangHighlights(container) {
+        const tool = TOOLS.LANG;
+        const toolKey = tool.key;
 
-        ensureToolResources(toolKey);
-        const toolData = toolResources.get(toolKey);
-
-        let overlayContainer = document.getElementById('LangOverlay-container');
-
+        // Create or reuse overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
-            overlayContainer.id = 'LangOverlay-container';
-            Object.assign(overlayContainer.style, {
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: 9999
-            });
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
-            addContainer(toolKey, overlayContainer);
         }
 
-        if (!toolData.processedLangMatches) {
-            toolData.processedLangMatches = new Set();
-        } else {
-            document.querySelectorAll('.A11y-lang-border').forEach(el => el.remove());
-            toolData.processedLangMatches.clear();
-        }
-        const processedLangMatches = toolData.processedLangMatches;
+        overlayContainer.innerHTML = '';
 
+        // WeakMap<TextNode, Map<startOffset, entry>>
+        overlayContainer._trackedMatches = new Map();
+
+        // Load dictionary
         const dictText = GM_getResourceText('EN_WORDS');
-
         const englishWords = new Set(
             dictText
-            .split("\n")
+            .split('\n')
             .map(w => w.trim().toLowerCase())
             .filter(Boolean)
         );
 
-        function getNearestLang(node) {
-            while (node && node.nodeType === Node.ELEMENT_NODE) {
-                if (node.hasAttribute('lang')) return node.getAttribute('lang').toLowerCase();
-                node = node.parentElement;
+        function getNearestLang(el) {
+            while (el && el.nodeType === 1) {
+                if (el.hasAttribute('lang')) {
+                    return el.getAttribute('lang').toLowerCase();
+                }
+                el = el.parentElement;
             }
             return null;
         }
 
-        function isInsideSelectClasses(node) {
-            while (node && node.nodeType === Node.ELEMENT_NODE) {
-                if (node.classList && (node.classList.contains('AccessibilityHelper') || (node.classList.contains('sr-only') || (node.classList.contains('screenreader-only'))))) {
-                    return true;
-                }
-                node = node.parentElement;
-            }
-            return false;
+        function shouldSkip(node) {
+            return !!node.closest('.AccessibilityHelper, .sr-only, .screenreader-only');
         }
 
-        function scanLang() {
+        function createBorder() {
+            const el = document.createElement('div');
+            el.className = 'A11y-lang-border';
+            overlayContainer.appendChild(el);
+            return el;
+        }
+
+        function scan() {
+            const seenEntries = new Set();
+
             const walker = document.createTreeWalker(
                 container,
                 NodeFilter.SHOW_TEXT,
                 {
                     acceptNode(node) {
                         if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+
+                        const parent = node.parentElement;
+                        if (!parent) return NodeFilter.FILTER_REJECT;
+
+                        if (!isActuallyVisible(parent)) return NodeFilter.FILTER_REJECT;
+                        if (shouldSkip(parent)) return NodeFilter.FILTER_REJECT;
+
                         return NodeFilter.FILTER_ACCEPT;
                     }
                 }
             );
 
             let textNode;
+
             while ((textNode = walker.nextNode())) {
+                const parent = textNode.parentElement;
+                const nearestLang = getNearestLang(parent);
+
                 const wordRegex = /[\p{L}]+/gu;
                 let match;
+
                 while ((match = wordRegex.exec(textNode.textContent)) !== null) {
-                    const word = match[0]; // the matched text in the node
-                    const start = match.index; // exact start index in textNode
-                    const end = start + word.length;
+                    const word = match[0];
+                    const start = match.index;
+                    const cleanWord = word.toLowerCase();
 
-                    let cleanWord = word.replace(/[^\p{L}]+/gu, '').toLowerCase();
+                    if (
+                        englishWords.has(cleanWord) ||
+                        (nearestLang && nearestLang !== 'en')
+                    ) {
+                        continue;
+                    }
 
-                    const nearestLang = getNearestLang(textNode.parentElement);
+                    // Get or create map for this text node
+                    let nodeMap = overlayContainer._trackedMatches.get(textNode);
 
-                    if (cleanWord &&
-                        !englishWords.has(cleanWord) &&
-                        (!nearestLang || nearestLang === 'en') &&
-                        (!isInsideSelectClasses(textNode.parentElement))
-                       ) {
-                        const matchKey = `${textNode.__a11yId || (textNode.__a11yId = Math.random())}:${start}`;
-                        if (!processedLangMatches.has(matchKey)) {
-                            const range = document.createRange();
-                            range.setStart(textNode, start);
-                            range.setEnd(textNode, end);
+                    if (!nodeMap) {
+                        nodeMap = new Map();
+                        overlayContainer._trackedMatches.set(textNode, nodeMap);
+                    }
 
-                            const rect = range.getBoundingClientRect();
-                            range.detach();
+                    let entry = nodeMap.get(start);
 
-                            if (rect.width > 0 && rect.height > 0 && isVisible(textNode.parentElement)) {
-                                const border = makeBorder(toolKey, 'LangOverlay-border A11y-lang-border');
-                                overlayContainer.appendChild(border);
-                                processedLangMatches.add(matchKey);
+                    if (!entry) {
+                        const border = createBorder();
 
-                                Object.assign(border.style, {
-                                    display: 'block',
-                                    top: `${Math.round(rect.top - 3)}px`,
-                                    left: `${Math.round(rect.left - 3)}px`,
-                                    width: `${Math.round(rect.width + 6)}px`,
-                                    height: `${Math.round(rect.height + 6)}px`
-                                });
+                        const highlight = () => border.classList.add('A11y-lang-highlight');
+                        const unhighlight = () => border.classList.remove('A11y-lang-highlight');
 
-                                border._a11yTarget = textNode.parentElement;
-                                border._a11yTextNode = textNode;
-                                border._a11yMatchIndex = start;
-                                border._a11yMatchLength = word.length;
+                        parent.addEventListener('mouseover', highlight);
+                        parent.addEventListener('mouseout', unhighlight);
 
-                                function highlight() { border.classList.add('LangOverlay-highlight'); }
-                                function unhighlight() { border.classList.remove('LangOverlay-highlight'); }
+                        entry = {
+                            textNode,
+                            start,
+                            length: word.length,
+                            border,
+                            parent,
+                            highlight,
+                            unhighlight
+                        };
 
-                                addListener(toolKey, textNode.parentElement, 'mouseover', highlight);
-                                addListener(toolKey, textNode.parentElement, 'mouseout', unhighlight);
-                            }
-                        }
+                        nodeMap.set(start, entry);
+                    }
+
+                    seenEntries.add(entry);
+                    updateEntry(entry);
+                }
+            }
+
+            // Cleanup stale entries
+            for (const [textNode, nodeMap] of overlayContainer._trackedMatches) {
+                for (const [start, entry] of nodeMap) {
+                    if (!seenEntries.has(entry)) {
+                        entry.parent.removeEventListener('mouseover', entry.highlight);
+                        entry.parent.removeEventListener('mouseout', entry.unhighlight);
+                        entry.border.remove();
+                        nodeMap.delete(start);
                     }
                 }
-
             }
         }
 
-        function updateLangBorderPositions() {
-            document.querySelectorAll('.A11y-lang-border').forEach(border => {
-                const textNode = border._a11yTextNode;
-                const charIndex = border._a11yMatchIndex;
+        function updateEntry(entry) {
+            const { textNode, start, length, border } = entry;
 
-                if (!textNode || !document.contains(textNode)) {
-                    border.remove();
-                    return;
-                }
+            if (!document.contains(textNode)) {
+                const nodeMap = overlayContainer._trackedMatches.get(textNode);
+                if (nodeMap) nodeMap.delete(start);
+                border.remove();
+                return;
+            }
 
-                const parentElement = textNode.parentElement;
-                if (!isVisible(parentElement)) {
-                    border.style.display = 'none';
-                    return;
-                }
+            const parent = textNode.parentElement;
 
-                const text = textNode.textContent;
-                const range = document.createRange();
-                range.setStart(textNode, charIndex);
-                range.setEnd(textNode, charIndex + border._a11yMatchLength);
-                const rect = range.getBoundingClientRect();
-                range.detach();
+            if (!isActuallyVisible(parent)) {
+                border.style.display = 'none';
+                return;
+            }
 
-                if (rect.width > 0 && rect.height > 0) {
-                    border.style.display = 'block';
-                    border.style.top = `${Math.round(rect.top - 3)}px`;
-                    border.style.left = `${Math.round(rect.left - 3)}px`;
-                    border.style.width = `${Math.round(rect.width + 6)}px`;
-                    border.style.height = `${Math.round(rect.height + 6)}px`;
-                } else {
-                    border.style.display = 'none';
-                }
-            });
+            const range = document.createRange();
+            range.setStart(textNode, start);
+            range.setEnd(textNode, start + length);
+
+            const rect = range.getBoundingClientRect();
+            range.detach();
+
+            if (rect.width === 0 || rect.height === 0) {
+                border.style.display = 'none';
+                return;
+            }
+
+            border.style.display = 'block';
+            border.style.top = Math.round(window.scrollY + rect.top - 3) + 'px';
+            border.style.left = Math.round(window.scrollX + rect.left - 3) + 'px';
+            border.style.width = Math.round(rect.width + 6) + 'px';
+            border.style.height = Math.round(rect.height + 6) + 'px';
         }
 
-        const debouncedScan = debounce(scanLang, 50);
-        const debouncedUpdatePositions = debounce(updateLangBorderPositions, 60);
+        function updateAll() {
+            for (const [, nodeMap] of overlayContainer._trackedMatches) {
+                for (const entry of nodeMap.values()) {
+                    updateEntry(entry);
+                }
+            }
+        }
 
-        addListener(toolKey, window, 'scroll', debouncedUpdatePositions, { passive: true });
-        addListener(toolKey, window, 'resize', debouncedUpdatePositions);
+        // ===== Observers =====
 
-        const observer = new MutationObserver(debouncedScan);
-        observer.observe(document.body, { childList: true, subtree: true });
-        addObserver(toolKey, observer);
+        const mutationObserver = new MutationObserver(mutations => {
+            for (const m of mutations) {
+                if (m.target.closest('.AccessibilityHelper')) return;
+            }
+            scan();
+        });
 
-        scanLang();
+        mutationObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['style', 'class', 'hidden', 'open']
+        });
+
+        const scrollHandler = () => updateAll();
+        const resizeHandler = () => updateAll();
+
+        document.addEventListener('scroll', scrollHandler, { passive: true, capture: true });
+        document.addEventListener('resize', resizeHandler, { passive: true, capture: true });
+
+        // Store cleanup references
+        overlayContainer._updateFn = updateAll;
+        updateFunctions.push(overlayContainer._updateFn);
+
+        overlayContainer._cleanup = {
+            mutationObserver,
+            scrollHandler,
+            resizeHandler
+        };
+
+        // Initial scan
+        scan();
     }
 
     function removeLangHighlights() {
-        cleanupTool('a11y_lang');
-        const borders = document.querySelectorAll('.A11y-lang-border');
-        borders.forEach(el => el.remove());
+        const tool = TOOLS.LANG;
+        const toolKey = tool.key;
+
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) return;
+
+        const cleanup = overlayContainer._cleanup;
+
+        // Stop observers + global listeners
+        if (cleanup) {
+            cleanup.mutationObserver.disconnect();
+            document.removeEventListener('scroll', cleanup.scrollHandler, true);
+            document.removeEventListener('resize', cleanup.resizeHandler, true);
+        }
+
+        const matches = overlayContainer._trackedMatches;
+
+        // Remove per-word listeners + borders
+        if (matches) {
+            for (const nodeMap of matches.values()) {
+                for (const entry of nodeMap.values()) {
+                    entry.parent.removeEventListener('mouseover', entry.highlight);
+                    entry.parent.removeEventListener('mouseout', entry.unhighlight);
+                    entry.border.remove();
+                }
+                nodeMap.clear();
+            }
+
+            // WeakMap technically doesn't need clear,
+            // but removing references helps correctness & debugging
+            matches.clear?.();
+        }
+
+        // Remove from global updateFunctions
+        if (overlayContainer._updateFn) {
+            const idx = updateFunctions.indexOf(overlayContainer._updateFn);
+            if (idx > -1) updateFunctions.splice(idx, 1);
+        }
+
+        overlayContainer.remove();
     }
 
     function runTableOverlay(container) {
-        const toolKey = 'a11y_table';
-        const processedTables = new Set();
+        const tool = TOOLS.TABLE;
+        const toolKey = tool.key;
+
+        // Create or get overlay container
+        let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (!overlayContainer) {
+            overlayContainer = document.createElement('div');
+            overlayContainer.className = 'AccessibilityHelper';
+            overlayContainer.dataset.tool = toolKey;
+            document.body.appendChild(overlayContainer);
+        }
+        overlayContainer.innerHTML = '';
+
+        function analyzeTableForA11yIssues(table) {
+            const issues = [];
+            const rows = Array.from(table.rows);
+
+            const hasAnyTH = table.querySelector('th') !== null;
+            if (!hasAnyTH) {
+                issues.push('Table does not contain any <th> header cells');
+            }
+
+            rows.forEach((row, rowIndex) => {
+                const cells = Array.from(row.cells);
+
+                cells.forEach((cell, colIndex) => {
+                    const rspan = parseInt(cell.getAttribute('rowspan') || '1', 10);
+                    const cspan = parseInt(cell.getAttribute('colspan') || '1', 10);
+
+                    if (rspan > 1) {
+                        issues.push(`Column ${colIndex + 1} has a cell spanning ${rspan} rows`);
+                    }
+                    if (cspan > 1) {
+                        issues.push(`Row ${rowIndex + 1} has a cell spanning ${cspan} columns`);
+                    }
+
+                    if (cell.tagName.toLowerCase() === 'th') {
+                        const scope = cell.getAttribute('scope');
+                        if (!scope) {
+                            issues.push(`Header cell in row ${rowIndex + 1} is missing a scope attribute`);
+                        }
+                    }
+                });
+            });
+
+            return issues;
+        }
 
         function scanTables() {
-            container.querySelectorAll('table').forEach(table => {
-                if (processedTables.has(table)) return;
+            const tables = container.querySelectorAll('table');
+
+            tables.forEach(table => {
+                if (table.closest('.AccessibilityHelper')) return;
+                if (table._a11yTableProcessed) return;
 
                 const issues = analyzeTableForA11yIssues(table);
-                if (issues.length === 0) return;
+                if (issues.length === 0) return; // ✅ conditional overlay
 
-                processedTables.add(table);
+                table._a11yTableProcessed = true;
 
-                const label = makeLabel(toolKey, 'A11y-table-label', issues.join('\n'));
-                const border = makeBorder(toolKey, 'A11y-table-border');
+                // Label
+                const label = document.createElement('div');
+                label.className = 'A11y-table-label';
+                label.textContent = issues.join('\n');
+                overlayContainer.appendChild(label);
+
+                // Border
+                const border = document.createElement('div');
+                border.className = 'A11y-table-border';
+                overlayContainer.appendChild(border);
 
                 function updatePositions() {
                     const r = table.getBoundingClientRect();
-                    if (isVisible(table)) {
+                    const visible = isActuallyVisible(table);
+
+                    if (visible) {
                         label.style.display = 'block';
                         border.style.display = 'block';
 
@@ -1145,94 +1524,119 @@
                     label.style.boxShadow = 'none';
                 }
 
-                addListener(toolKey, table, 'mouseover', highlight);
-                addListener(toolKey, table, 'mouseout', unhighlight);
-                addListener(toolKey, label, 'mouseover', highlight);
-                addListener(toolKey, label, 'mouseout', unhighlight);
+                table.addEventListener('mouseover', highlight);
+                table.addEventListener('mouseout', unhighlight);
+                label.addEventListener('mouseover', highlight);
+                label.addEventListener('mouseout', unhighlight);
+
+                table._highlightFunction = highlight;
+                table._unhighlightFunction = unhighlight;
 
                 updatePositions();
 
-                attachAutoUpdate(toolKey, updatePositions, {
-                    attributeFilter: ['style', 'class', 'hidden']
+                // Observe attribute changes
+                const tableObserver = new MutationObserver(updatePositions);
+                tableObserver.observe(table, {
+                    attributes: true,
+                    attributeFilter: ['style', 'class', 'hidden', 'open']
                 });
+
+                table._a11yTableObserver = tableObserver;
+                table._updateFunction = updatePositions;
+
+                document.addEventListener('scroll', updatePositions, { capture: true, passive: true });
+                document.addEventListener('resize', updatePositions);
+                updateFunctions.push(updatePositions);
             });
         }
-
-        const debouncedScan = debounce(scanTables, 120);
-        const observer = new MutationObserver((mutations) => {
-            debouncedScan();
-        });
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-        addObserver(toolKey, observer);
 
         scanTables();
 
-        function analyzeTableForA11yIssues(table) {
-            const issues = [];
-
-            const rows = Array.from(table.rows);
-
-            rows.forEach((row, rowIndex) => {
-                const cells = Array.from(row.cells);
-
-                cells.forEach((cell, colIndex) => {
-                    const rspan = parseInt(cell.getAttribute('rowspan') || "1", 10);
-                    const cspan = parseInt(cell.getAttribute('colspan') || "1", 10);
-
-                    if (rspan > 1) {
-                        issues.push(`Column ${colIndex + 1} contains a cell merged across ${rspan} rows`);
-                    }
-                    if (cspan > 1) {
-                        issues.push(`Row ${rowIndex + 1} contains a cell merged across ${cspan} columns`);
-                    }
-
-                    if (cell.tagName.toLowerCase() === 'th') {
-                        const scope = cell.getAttribute('scope');
-                        if (!scope) {
-                            issues.push(`Header cell in Row ${rowIndex + 1} is missing a scope attribute`);
-                        }
-                    }
-                });
-            });
-            return issues;
+        // Watch for new tables
+        if (overlayContainer._observer) {
+            overlayContainer._observer.disconnect();
         }
-
+        const observer = new MutationObserver(scanTables);
+        observer.observe(container, { childList: true, subtree: true });
+        overlayContainer._observer = observer;
     }
 
-    function removeTableHighlights() {
-        cleanupTool('a11y_table');
-        document.querySelectorAll('.A11y-table-label, .A11y-table-border').forEach(el => el.remove());
+    function removeTableOverlay() {
+        const tool = TOOLS.TABLE;
+        const toolKey = tool.key;
+
+        const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
+        if (overlayContainer) {
+            if (overlayContainer._observer) overlayContainer._observer.disconnect();
+            overlayContainer.remove();
+        }
+
+        document.querySelectorAll('table').forEach(table => {
+            if (table._a11yTableObserver) {
+                table._a11yTableObserver.disconnect();
+                delete table._a11yTableObserver;
+            }
+
+            document.removeEventListener('scroll', table._updateFunction, { capture: true, passive: true });
+            document.removeEventListener('resize', table._updateFunction);
+
+            table.removeEventListener('mouseover', table._highlightFunction);
+            table.removeEventListener('mouseout', table._unhighlightFunction);
+
+            const index = updateFunctions.indexOf(table._updateFunction);
+            if (index > -1) updateFunctions.splice(index, 1);
+
+            delete table._updateFunction;
+            delete table._highlightFunction;
+            delete table._unhighlightFunction;
+            delete table._a11yTableProcessed;
+        });
     }
 
     // Auto-run on page load
-    function waitForUserContent() {
-        const observer = new MutationObserver((mutations, obs) => {
-            const container = document.body;
-            if (container) {
-                obs.disconnect();
-                setTimeout(() => {
-                    Object.values(TOOLS).forEach(tool => {
-                        if (shouldAutoRun && GM_getValue(tool.key, true)) {
-                            tool.run(container);
-                        }
-                    });
-                }, 2000);
-            }
+    function runWhenPageLoaded() {
+        let timeout = null;
+        const observer = new MutationObserver(() => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                observer.disconnect();
+                const container = document.body;
+                Object.values(TOOLS).forEach(tool => {
+                    if (shouldAutoRun && GM_getValue(tool.key, true)) {
+                        tool.run(container);
+                    }
+                });
+            }, 250);
         });
-
         observer.observe(document.body, {
             childList: true,
-            subtree: true
+            subtree: true,
+            attributes: true
         });
     }
+
+    // Rebounced scanner for any page changes (like dropdowns) to force update
+    let resizeTimeout;
+    const ro = new ResizeObserver(() => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            console.log("Changed!!!");
+            updateFunctions.forEach(fn => fn());
+        }, 150);
+    });
+    ro.observe(document.body);
+
+    // Timer to update everything on a regular basis
+    setInterval(() => {
+        console.log("Regular update");
+        updateFunctions.forEach(fn => fn());
+    }, 2000);
+
 
     // Start
     updateMenuCommands();
     if (shouldAutoRun) {
-        waitForUserContent();
+        runWhenPageLoaded();
     }
 
 })();
