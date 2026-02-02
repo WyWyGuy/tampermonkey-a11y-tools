@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-30.1
+// @version      2026-02-02
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -228,54 +228,29 @@
 
     // Helper functions
     function isActuallyVisible(el) {
-        /* //Old version without bounding box checking:
-     function isActuallyVisible(el) {
-        if (!el.offsetParent) return false;
-        if (getComputedStyle(el).visibility === 'hidden') return false;
-        let current = el;
-        while (current) {
-            if (current.closest('.AccessibilityHelper')) return false;
-            if (current.tagName === 'DETAILS' && !current.open) return false;
-            const style = getComputedStyle(current);
-            if (style.display === 'none' || style.visibility === 'hidden') return false;
-            current = current.parentElement;
-        }
-        return true;
-    }
-        */
-        // Must be an element
         if (!(el instanceof Element)) return false;
 
-        // Own visibility
         const cs = getComputedStyle(el);
         if (cs.visibility === 'hidden') return false;
 
-        // Element's bounding rect
         const rect = el.getBoundingClientRect();
 
-        // Skip if element is outside the viewport
         if (rect.width === 0 || rect.height === 0) return false;
 
         let current = el;
         while (current) {
-            // Skip if inside AccessibilityHelper
             if (current.closest('.AccessibilityHelper')) return false;
 
-            // Skip collapsed details
             if (current.tagName === 'DETAILS' && !current.open) return false;
 
             const style = getComputedStyle(current);
 
-            // Skip invisible elements
             if (style.display === 'none' || style.visibility === 'hidden') return false;
 
-            // Skip elements with class names containing "screenreadercontent"
             if (current.className && current.className.toString().toLowerCase().includes('screenreadercontent')) return false;
 
-            // Check scrollable ancestor clipping
             if (style.overflow === 'auto' || style.overflow === 'scroll' || style.overflowX === 'auto' || style.overflowY === 'auto' || style.overflowX === 'scroll' || style.overflowY === 'scroll') {
                 const parentRect = current.getBoundingClientRect();
-                // If the element's rect is completely outside the parent's content box
                 if (
                     rect.bottom < parentRect.top ||
                     rect.top > parentRect.bottom ||
@@ -296,10 +271,9 @@
 
     // Tool implementations
     function runImageAltOverlay(container) {
-        const tool = TOOLS.IMG; // or TOOLS['IMG']
+        const tool = TOOLS.IMG;
         const toolKey = tool.key;
 
-        // Create or get the main overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -307,25 +281,23 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
-        overlayContainer.innerHTML = ''; // Clear any existing overlays
+        overlayContainer.innerHTML = '';
 
         function scanImages() {
             const images = container.querySelectorAll('img');
             images.forEach(img => {
-                if (img.closest('.AccessibilityHelper')) return; // skip overlays
+                if (img.closest('.AccessibilityHelper')) return;
                 if (img._a11yImgProcessed) return;
                 img._a11yImgProcessed = true;
 
                 const roleAttr = (img.getAttribute && (img.getAttribute('role') || '')).toLowerCase();
                 const altText = roleAttr === 'presentation' ? '[Decorative]' : (img.alt?.trim() || '[Missing]');
 
-                // Create label
                 const label = document.createElement('div');
                 label.className = 'A11y-img-label';
                 label.textContent = 'Alt Text: ' + altText;
                 overlayContainer.appendChild(label);
 
-                // Create border
                 const border = document.createElement('div');
                 border.className = 'A11y-img-border';
                 overlayContainer.appendChild(border);
@@ -348,7 +320,6 @@
                     }
                 }
 
-                // Highlight on hover
                 function highlight() {
                     border.style.borderColor = '#393';
                     border.style.boxShadow = '1px 2px 5px #CCC';
@@ -371,49 +342,52 @@
 
                 updatePositions();
 
-                // Watch for changes to the image and update position
                 const imgObserver = new MutationObserver(updatePositions);
                 imgObserver.observe(img, { attributes: true, attributeFilter: ['src', 'alt', 'role', 'style', 'class', 'hidden'] });
                 img._a11yImgObserver = imgObserver;
                 img._updateFunction = updatePositions;
 
-                // Also update positions on scroll or resize
                 document.addEventListener('scroll', img._updateFunction, { capture: true, passive: true });
-                document.addEventListener('resize', img._updateFunction);
+                window.addEventListener('resize', img._updateFunction, { passive: true });
                 updateFunctions.push(img._updateFunction);
             });
         }
 
         scanImages();
 
-        // Observe DOM changes to catch new images
         if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
         }
         const observer = new MutationObserver(scanImages);
         observer.observe(container, { childList: true, subtree: true });
-        overlayContainer._observer = observer; // keep reference for removal
+        overlayContainer._observer = observer;
     }
 
     function removeImageAltOverlay() {
-        const tool = TOOLS.IMG; // or TOOLS['IMG']
+        const tool = TOOLS.IMG;
         const toolKey = tool.key;
+
         const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
             overlayContainer.remove();
         }
+
         document.querySelectorAll('img').forEach(img => {
             if (img._a11yImgObserver) {
                 img._a11yImgObserver.disconnect();
                 delete img._a11yImgObserver;
             }
+
             document.removeEventListener('scroll', img._updateFunction, { capture: true, passive: true });
-            document.removeEventListener('resize', img._updateFunction);
+            window.removeEventListener('resize', img._updateFunction, { passive: true });
+
             img.removeEventListener('mouseover', img._highlightFunction);
             img.removeEventListener('mouseout', img._unhighlightFunction);
+
             const index = updateFunctions.indexOf(img._updateFunction);
             if (index > -1) updateFunctions.splice(index, 1);
+
             delete img._updateFunction;
             delete img._highlightFunction;
             delete img._unhighlightFunction;
@@ -425,7 +399,6 @@
         const tool = TOOLS.IFRAME;
         const toolKey = tool.key;
 
-        // Create or get overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -529,7 +502,6 @@
                     border.style.boxShadow = 'none';
                 }
 
-                // Hover listeners
                 f.addEventListener('mouseover', highlight);
                 f.addEventListener('mouseout', unhighlight);
                 label.addEventListener('mouseover', highlight);
@@ -540,7 +512,6 @@
 
                 updatePositions();
 
-                // Observe attribute changes that affect accessible name or visibility
                 const iframeObserver = new MutationObserver(updatePositions);
                 iframeObserver.observe(f, {
                     attributes: true,
@@ -561,14 +532,13 @@
                 f._updateFunction = updatePositions;
 
                 document.addEventListener('scroll', updatePositions, { capture: true, passive: true });
-                document.addEventListener('resize', updatePositions);
+                window.addEventListener('resize', updatePositions, { passive: true });
                 updateFunctions.push(updatePositions);
             });
         }
 
         scanIframes();
 
-        // Watch for new iframes
         if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
         }
@@ -595,7 +565,7 @@
             }
 
             document.removeEventListener('scroll', f._updateFunction, { capture: true, passive: true });
-            document.removeEventListener('resize', f._updateFunction);
+            window.removeEventListener('resize', f._updateFunction, { passive: true });
 
             f.removeEventListener('mouseover', f._highlightFunction);
             f.removeEventListener('mouseout', f._unhighlightFunction);
@@ -611,10 +581,9 @@
     }
 
     function runHeadingTagOverlay(container) {
-        const tool = TOOLS.HEADING; // or TOOLS['IMG']
+        const tool = TOOLS.HEADING;
         const toolKey = tool.key;
 
-        // Create or get the main overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -622,22 +591,20 @@
             overlayContainer.dataset.tool = toolKey;
             document.body.appendChild(overlayContainer);
         }
-        overlayContainer.innerHTML = ''; // Clear any existing overlays
+        overlayContainer.innerHTML = '';
 
         function scanHeaders() {
             const headers = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
             headers.forEach(h => {
-                if (h.closest('.AccessibilityHelper')) return; // skip overlays
+                if (h.closest('.AccessibilityHelper')) return;
                 if (h._a11yHeaderProcessed) return;
                 h._a11yHeaderProcessed = true;
 
-                // Create label
                 const label = document.createElement('div');
                 label.className = 'A11y-header-label';
                 label.textContent = h.tagName;
                 overlayContainer.appendChild(label);
 
-                // Create border
                 const border = document.createElement('div');
                 border.className = 'A11y-header-border';
                 overlayContainer.appendChild(border);
@@ -660,7 +627,6 @@
                     }
                 }
 
-                // Highlight on hover
                 function highlight() {
                     border.style.borderColor = '#393';
                     border.style.boxShadow = '1px 2px 5px #CCC';
@@ -683,49 +649,52 @@
 
                 updatePositions();
 
-                // Watch for changes to the image and update position
                 const headerObserver = new MutationObserver(updatePositions);
                 headerObserver.observe(h, { attributes: true, attributeFilter: ['style', 'class', 'hidden', 'open'] });
                 h._a11yHeaderObserver = headerObserver;
                 h._updateFunction = updatePositions;
 
-                // Also update positions on scroll or resize
                 document.addEventListener('scroll', h._updateFunction, { capture: true, passive: true });
-                document.addEventListener('resize', h._updateFunction);
+                window.addEventListener('resize', h._updateFunction, { passive: true });
                 updateFunctions.push(h._updateFunction);
             });
         }
 
         scanHeaders();
 
-        // Observe DOM changes to catch new images
         if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
         }
         const observer = new MutationObserver(scanHeaders);
         observer.observe(container, { childList: true, subtree: true });
-        overlayContainer._observer = observer; // keep reference for removal
+        overlayContainer._observer = observer;
     }
 
     function removeHeadingTagOverlay() {
-        const tool = TOOLS.HEADING; // or TOOLS['IMG']
+        const tool = TOOLS.HEADING;
         const toolKey = tool.key;
+
         const overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (overlayContainer) {
             if (overlayContainer._observer) overlayContainer._observer.disconnect();
             overlayContainer.remove();
         }
+
         document.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
             if (h._a11yHeaderObserver) {
                 h._a11yHeaderObserver.disconnect();
                 delete h._a11yHeaderObserver;
             }
+
             document.removeEventListener('scroll', h._updateFunction, { capture: true, passive: true });
-            document.removeEventListener('resize', h._updateFunction);
+            window.removeEventListener('resize', h._updateFunction, { passive: true });
+
             h.removeEventListener('mouseover', h._highlightFunction);
             h.removeEventListener('mouseout', h._unhighlightFunction);
+
             const index = updateFunctions.indexOf(h._updateFunction);
             if (index > -1) updateFunctions.splice(index, 1);
+
             delete h._updateFunction;
             delete h._highlightFunction;
             delete h._unhighlightFunction;
@@ -734,10 +703,9 @@
     }
 
     function runIBTagHighlights(container) {
-        const tool = TOOLS.IB; // or TOOLS['IB']
+        const tool = TOOLS.IB;
         const toolKey = tool.key;
 
-        // Create or get the main overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -764,7 +732,6 @@
 
                 el._a11yIBProcessed = true;
 
-                // Create border
                 const border = document.createElement('div');
                 border.className = 'A11y-ib-border';
                 overlayContainer.appendChild(border);
@@ -801,7 +768,6 @@
 
                 updatePosition();
 
-                // Observe attribute changes on the element
                 const observer = new MutationObserver(updatePosition);
                 observer.observe(el, {
                     attributes: true,
@@ -810,16 +776,14 @@
 
                 el._a11yIBObserver = observer;
 
-                // Global updates
                 document.addEventListener('scroll', updatePosition, { capture: true, passive: true });
-                document.addEventListener('resize', updatePosition);
+                window.addEventListener('resize', updatePosition, { passive: true });
                 updateFunctions.push(updatePosition);
             });
         }
 
         scanIB();
 
-        // Watch DOM for new i / b tags
         if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
         }
@@ -846,7 +810,7 @@
             }
 
             document.removeEventListener('scroll', el._updateFunction, { capture: true, passive: true });
-            document.removeEventListener('resize', el._updateFunction);
+            window.removeEventListener('resize', el._updateFunction, { passive: true });
 
             el.removeEventListener('mouseover', el._highlightFunction);
             el.removeEventListener('mouseout', el._unhighlightFunction);
@@ -865,7 +829,6 @@
         const tool = TOOLS.CONTRAST;
         const toolKey = tool.key;
 
-        // Create or get overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -880,10 +843,6 @@
         } else {
             overlayContainer._trackedElements = new Set();
         }
-
-        // ----------------------------
-        // Contrast math helpers
-        // ----------------------------
 
         function isFullyTransparent(color) {
             if (!color) return true;
@@ -974,10 +933,6 @@
             return ratio >= threshold;
         }
 
-        // ----------------------------
-        // Scanner
-        // ----------------------------
-
         function scanContrast() {
             const walker = document.createTreeWalker(
                 container,
@@ -1027,10 +982,6 @@
                 el._a11yContrastProcessed = true;
                 overlayContainer._trackedElements.add(el);
 
-                // ----------------------------
-                // Create border
-                // ----------------------------
-
                 const border = document.createElement('div');
                 border.className = 'A11y-contrast-border';
                 overlayContainer.appendChild(border);
@@ -1061,17 +1012,14 @@
                     border.classList.remove('A11y-contrast-highlight');
                 }
 
-                // Store references
                 el._contrastBorder = border;
                 el._contrastUpdate = updatePosition;
                 el._contrastHighlight = highlight;
                 el._contrastUnhighlight = unhighlight;
 
-                // Event listeners
                 el.addEventListener('mouseover', highlight);
                 el.addEventListener('mouseout', unhighlight);
 
-                // Attribute observer
                 const attrObserver = new MutationObserver(updatePosition);
                 attrObserver.observe(el, {
                     attributes: true,
@@ -1080,9 +1028,8 @@
 
                 el._contrastObserver = attrObserver;
 
-                // Global updates
                 document.addEventListener('scroll', updatePosition, { capture: true, passive: true });
-                document.addEventListener('resize', updatePosition);
+                window.addEventListener('resize', updatePosition, { passive: true });
 
                 updateFunctions.push(updatePosition);
 
@@ -1090,10 +1037,8 @@
             }
         }
 
-        // Initial scan
         scanContrast();
 
-        // Watch DOM for new text
         if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
         }
@@ -1102,8 +1047,8 @@
         domObserver.observe(container, {
             childList: true,
             subtree: true,
-            attributes: true, // catch style/class changes
-            attributeFilter: ['style', 'class', 'open', 'hidden'] //optional more
+            attributes: true,
+            attributeFilter: ['style', 'class', 'open', 'hidden']
         });
 
         overlayContainer._observer = domObserver;
@@ -1128,7 +1073,7 @@
                     }
 
                     document.removeEventListener('scroll', el._contrastUpdate, { capture: true, passive: true });
-                    document.removeEventListener('resize', el._contrastUpdate);
+                    window.removeEventListener('resize', el._contrastUpdate, { passive: true });
 
                     el.removeEventListener('mouseover', el._contrastHighlight);
                     el.removeEventListener('mouseout', el._contrastUnhighlight);
@@ -1157,7 +1102,6 @@
         const tool = TOOLS.LANG;
         const toolKey = tool.key;
 
-        // Create or reuse overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -1168,11 +1112,15 @@
 
         overlayContainer.innerHTML = '';
 
-        // WeakMap<TextNode, Map<startOffset, entry>>
         overlayContainer._trackedMatches = new Map();
 
-        // Load dictionary
         const dictText = GM_getResourceText('EN_WORDS');
+
+        if (!dictText) {
+            console.error('A11y dictionary not loade. Lang tool disabled');
+            return;
+        }
+
         const englishWords = new Set(
             dictText
             .split('\n')
@@ -1243,7 +1191,6 @@
                         continue;
                     }
 
-                    // Get or create map for this text node
                     let nodeMap = overlayContainer._trackedMatches.get(textNode);
 
                     if (!nodeMap) {
@@ -1280,7 +1227,6 @@
                 }
             }
 
-            // Cleanup stale entries
             for (const [textNode, nodeMap] of overlayContainer._trackedMatches) {
                 for (const [start, entry] of nodeMap) {
                     if (!seenEntries.has(entry)) {
@@ -1337,8 +1283,6 @@
             }
         }
 
-        // ===== Observers =====
-
         const mutationObserver = new MutationObserver(mutations => {
             for (const m of mutations) {
                 if (m.target.closest('.AccessibilityHelper')) return;
@@ -1358,9 +1302,8 @@
         const resizeHandler = () => updateAll();
 
         document.addEventListener('scroll', scrollHandler, { passive: true, capture: true });
-        document.addEventListener('resize', resizeHandler, { passive: true, capture: true });
+        window.addEventListener('resize', resizeHandler, { passive: true });
 
-        // Store cleanup references
         overlayContainer._updateFn = updateAll;
         updateFunctions.push(overlayContainer._updateFn);
 
@@ -1370,7 +1313,6 @@
             resizeHandler
         };
 
-        // Initial scan
         scan();
     }
 
@@ -1383,16 +1325,14 @@
 
         const cleanup = overlayContainer._cleanup;
 
-        // Stop observers + global listeners
         if (cleanup) {
             cleanup.mutationObserver.disconnect();
             document.removeEventListener('scroll', cleanup.scrollHandler, true);
-            document.removeEventListener('resize', cleanup.resizeHandler, true);
+            window.removeEventListener('resize', cleanup.resizeHandler, { passive: true });
         }
 
         const matches = overlayContainer._trackedMatches;
 
-        // Remove per-word listeners + borders
         if (matches) {
             for (const nodeMap of matches.values()) {
                 for (const entry of nodeMap.values()) {
@@ -1403,12 +1343,9 @@
                 nodeMap.clear();
             }
 
-            // WeakMap technically doesn't need clear,
-            // but removing references helps correctness & debugging
             matches.clear?.();
         }
 
-        // Remove from global updateFunctions
         if (overlayContainer._updateFn) {
             const idx = updateFunctions.indexOf(overlayContainer._updateFn);
             if (idx > -1) updateFunctions.splice(idx, 1);
@@ -1421,7 +1358,6 @@
         const tool = TOOLS.TABLE;
         const toolKey = tool.key;
 
-        // Create or get overlay container
         let overlayContainer = document.querySelector(`.AccessibilityHelper[data-tool='${toolKey}']`);
         if (!overlayContainer) {
             overlayContainer = document.createElement('div');
@@ -1474,17 +1410,15 @@
                 if (table._a11yTableProcessed) return;
 
                 const issues = analyzeTableForA11yIssues(table);
-                if (issues.length === 0) return; // ✅ conditional overlay
+                if (issues.length === 0) return;
 
                 table._a11yTableProcessed = true;
 
-                // Label
                 const label = document.createElement('div');
                 label.className = 'A11y-table-label';
                 label.textContent = issues.join('\n');
                 overlayContainer.appendChild(label);
 
-                // Border
                 const border = document.createElement('div');
                 border.className = 'A11y-table-border';
                 overlayContainer.appendChild(border);
@@ -1534,7 +1468,6 @@
 
                 updatePositions();
 
-                // Observe attribute changes
                 const tableObserver = new MutationObserver(updatePositions);
                 tableObserver.observe(table, {
                     attributes: true,
@@ -1545,14 +1478,13 @@
                 table._updateFunction = updatePositions;
 
                 document.addEventListener('scroll', updatePositions, { capture: true, passive: true });
-                document.addEventListener('resize', updatePositions);
+                window.addEventListener('resize', updatePositions, { passive: true });
                 updateFunctions.push(updatePositions);
             });
         }
 
         scanTables();
 
-        // Watch for new tables
         if (overlayContainer._observer) {
             overlayContainer._observer.disconnect();
         }
@@ -1578,7 +1510,7 @@
             }
 
             document.removeEventListener('scroll', table._updateFunction, { capture: true, passive: true });
-            document.removeEventListener('resize', table._updateFunction);
+            window.removeEventListener('resize', table._updateFunction, { passive: true });
 
             table.removeEventListener('mouseover', table._highlightFunction);
             table.removeEventListener('mouseout', table._unhighlightFunction);
@@ -1620,15 +1552,13 @@
     const ro = new ResizeObserver(() => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-            console.log("Changed!!!");
             updateFunctions.forEach(fn => fn());
         }, 150);
     });
     ro.observe(document.body);
 
-    // Timer to update everything on a regular basis
+    // Timer to ensure everything updates on a regular basis
     setInterval(() => {
-        console.log("Regular update");
         updateFunctions.forEach(fn => fn());
     }, 2000);
 
