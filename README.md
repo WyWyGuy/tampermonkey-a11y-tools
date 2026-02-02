@@ -39,3 +39,7 @@ This script simply clicks the edit as HTML button (if toggled on) and always swi
 # RawHTMLEditorHelper.user.js
 
 This script highlights core parts of accessibility in the raw HTML editor, as well as adding a refined search box above the editor.
+
+# CanvasFilePathTool.user.js
+
+This script adds a tooltip and link to help users know where files are located in the Canvas file menu.
