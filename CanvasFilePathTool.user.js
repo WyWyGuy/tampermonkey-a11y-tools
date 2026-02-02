@@ -12,7 +12,6 @@
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/CanvasFilePathTool.user.js
 // @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/CanvasFilePathTool.user.js
-
 // @connect      *
 // ==/UserScript==
 
