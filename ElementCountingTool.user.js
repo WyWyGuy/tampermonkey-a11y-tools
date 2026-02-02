@@ -9,6 +9,8 @@
 // @match        https://byuismastercourses.instructure.com/courses/*
 // @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
+// @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ElementCountingTool.user.js
+// @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/ElementCountingTool.user.js
 // @grant        GM_registerMenuCommand
 // ==/UserScript==
 
