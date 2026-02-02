@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-27
+// @version      2026-02-02
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
-// @match        https://byu.instructure.com/courses/*/edit
-// @match        https://byuis.instructure.com/courses/*/edit
-// @match        https://byuismastercourses.instructure.com/courses/*/edit
-// @match        https://byuohs.instructure.com/courses/*/edit
+// @match        https://byu.instructure.com/courses/*
+// @match        https://byuis.instructure.com/courses/*
+// @match        https://byuismastercourses.instructure.com/courses/*
+// @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/RawHTMLEditorHelper.user.js
@@ -16,6 +16,14 @@
 
 (function () {
     "use strict";
+
+    // Only run on edit pages and question bank pages
+    const path = location.pathname;
+    const isEditPage = path.endsWith('/edit');
+    const isQuestionBank = path.includes('/question_banks/');
+    if (!isEditPage && !isQuestionBank) {
+        return;
+    }
 
     const SEARCH_PATTERNS = [
         { regex: /aria-label=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0,255,204,0.4);" },
@@ -28,7 +36,8 @@
         { regex: /&lt;h3\b[\s\S]*?&gt;[\s\S]*?&lt;\/h3&gt;/gi, style: "background: rgba(128,0,128,0.35);" },
         { regex: /&lt;h4\b[\s\S]*?&gt;[\s\S]*?&lt;\/h4&gt;/gi, style: "background: rgba(128,0,128,0.28);" },
         { regex: /&lt;h5\b[\s\S]*?&gt;[\s\S]*?&lt;\/h5&gt;/gi, style: "background: rgba(128,0,128,0.2);" },
-        { regex: /&lt;h6\b[\s\S]*?&gt;[\s\S]*?&lt;\/h6&gt;/gi, style: "background: rgba(128,0,128,0.15);" }
+        { regex: /&lt;h6\b[\s\S]*?&gt;[\s\S]*?&lt;\/h6&gt;/gi, style: "background: rgba(128,0,128,0.15);" },
+        { regex: /lang=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0,80,0,0.35);" }
     ];
 
     function enhanceTextarea(textarea) {
@@ -39,6 +48,7 @@
 
         // --- wrapper ---
         const wrapper = document.createElement("div");
+        wrapper.classList.add("RawHtmlOverlayWrapper");
         wrapper.style.position = "relative";
         wrapper.style.display = "block";
         wrapper.style.width = "100%";
@@ -212,6 +222,7 @@
             syncOverlays();
         }
 
+        wrapper._focusSearchBox = focusSearchBox;
 
         function syncOverlays() {
             syncAllOverlayWidths();
@@ -318,8 +329,6 @@
             }
         }
 
-        document.addEventListener("keydown", globalCtrlFHandler);
-
         // initial sync
         syncOverlays();
     }
@@ -327,6 +336,50 @@
     function scan() {
         document.querySelectorAll('textarea[data-rich_text="true"]').forEach(enhanceTextarea);
     }
+
+    document.addEventListener("keydown", e => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.key.toLowerCase() !== "f") return;
+
+        const active = document.activeElement;
+
+        // Case 1: Cursor is inside textarea
+        if (active && active.tagName === "TEXTAREA") {
+            const wrapper = active.closest(".RawHtmlOverlayWrapper");
+            if (wrapper?._focusSearchBox) {
+                e.preventDefault();
+                wrapper._focusSearchBox();
+                return;
+            }
+        }
+
+        // Case 2: Cursor is inside search input
+        if (active && active.tagName === "INPUT") {
+            const wrapper = active.closest(".RawHtmlOverlayWrapper");
+            if (wrapper?._focusSearchBox) {
+                e.preventDefault();
+                wrapper._focusSearchBox();
+                return;
+            }
+        }
+
+        // Case 3: Cursor somewhere inside wrapper UI
+        if (active) {
+            const wrapper = active.closest(".RawHtmlOverlayWrapper");
+            if (wrapper?._focusSearchBox) {
+                e.preventDefault();
+                wrapper._focusSearchBox();
+            }
+        }
+
+        // Case 4 (DEFAULT): No relevant focus → open first editor search box
+        const firstWrapper = document.querySelector(".RawHtmlOverlayWrapper");
+        if (firstWrapper?._focusSearchBox) {
+            e.preventDefault();
+            firstWrapper._focusSearchBox();
+        }
+    });
+
 
     scan();
 
