@@ -43,3 +43,7 @@ This script highlights core parts of accessibility in the raw HTML editor, as we
 # CanvasFilePathTool.user.js
 
 This script adds a tooltip and link to help users know where files are located in the Canvas file menu.
+
+# ElementCountingTool.user.js
+
+This script works similarly to `ModuleCountingTool.user.js`, but works on any Canvas page and counts specific HTML elements.
