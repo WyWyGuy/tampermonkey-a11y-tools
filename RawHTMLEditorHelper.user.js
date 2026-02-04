@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-02
+// @version      2026-02-04
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -26,10 +26,10 @@
     }
 
     const SEARCH_PATTERNS = [
-        { regex: /aria-label=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0,255,204,0.4);" },
-        { regex: /title=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(255,164,0,0.45);" },
+        { regex: /aria-label=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0, 255, 90, 0.35);" },
+        { regex: /title=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(255,0,0,0.30);" },
         { regex: /aria-description=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(255,0,0,0.30);" },
-        { regex: /alt=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0, 255, 90, 0.35);" },
+        { regex: /alt=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0,255,220,0.4);" },
         { regex: /&lt;table\b(?:[^&]|&(?:quot|amp|#39);)*?&gt;/gi, style: "background: rgba(255,219,0,0.45);" },
         { regex: /&lt;h1\b[\s\S]*?&gt;[\s\S]*?&lt;\/h1&gt;/gi, style: "background: rgba(128,0,128,0.55);" },
         { regex: /&lt;h2\b[\s\S]*?&gt;[\s\S]*?&lt;\/h2&gt;/gi, style: "background: rgba(128,0,128,0.43);" },
@@ -38,6 +38,8 @@
         { regex: /&lt;h5\b[\s\S]*?&gt;[\s\S]*?&lt;\/h5&gt;/gi, style: "background: rgba(128,0,128,0.2);" },
         { regex: /&lt;h6\b[\s\S]*?&gt;[\s\S]*?&lt;\/h6&gt;/gi, style: "background: rgba(128,0,128,0.15);" },
         { regex: /lang=&quot;(?:[^&]|&(?:quot|amp|#39);)*?&quot;/gi, style: "background: rgba(0,80,0,0.35);" }
+        // Orange: background: rgba(255,164,0,0.45);
+        // Blue: background: rgba(0, 125, 255, 0.35);
     ];
 
     function enhanceTextarea(textarea) {
