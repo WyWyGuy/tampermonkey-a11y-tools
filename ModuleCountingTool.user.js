@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Module Counting Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-29
+// @version      2026-02-04
 // @description  Label modules to easily see their indices
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -77,7 +77,34 @@
     modules.forEach((mod, i) => {
         const label = document.createElement('div');
         label.className = 'AccessibilityHelper AccessibilityHelper-label';
-        label.textContent = "Module " + (i + 1).toString(); // 1-indexed order
+        label.innerHTML = `Module ${i + 1} (<u class="open-all-links" style="cursor:pointer;color:#0066cc;">Open all links</u>)`;
+
+        const openAllBtn = label.querySelector('.open-all-links');
+
+        openAllBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Find the module content area
+            const content = mod.querySelector('.context_module_items');
+            if (!content) return;
+
+            // Select ONLY real content links (module item titles)
+            const links = content.querySelectorAll(
+                '.module-item-title a.title, .module-item-title a.ig-title'
+            );
+
+            links.forEach(link => {
+                const href = link.href;
+
+                // Safety checks
+                if (!href) return;
+                if (href.startsWith('javascript:')) return;
+
+                window.open(href, '_blank', 'noopener');
+            });
+        });
+
 
         const border = document.createElement('div');
         border.className = 'AccessibilityHelper AccessibilityHelper-border';
