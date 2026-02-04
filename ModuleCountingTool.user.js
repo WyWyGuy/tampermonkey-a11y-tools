@@ -77,7 +77,7 @@
     modules.forEach((mod, i) => {
         const label = document.createElement('div');
         label.className = 'AccessibilityHelper AccessibilityHelper-label';
-        label.innerHTML = `Module ${i + 1} (<u class="open-all-links" style="cursor:pointer;color:#0066cc;">Open all links</u>)`;
+        label.innerHTML = `Module ${i + 1} (<u class="open-all-links" style="cursor:pointer;color:#0066cc;">Open all pages</u>)`;
 
         const openAllBtn = label.querySelector('.open-all-links');
 
