@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-02
+// @version      2026-02-10
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -1416,7 +1416,7 @@
 
                 const label = document.createElement('div');
                 label.className = 'A11y-table-label';
-                label.textContent = issues.join('\n');
+                label.innerHTML = "<span style='color: #c00;'>" + issues.join('\n') + "</span>";
                 overlayContainer.appendChild(label);
 
                 const border = document.createElement('div');
