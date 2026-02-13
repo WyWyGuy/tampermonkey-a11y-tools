@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-10
+// @version      2026-02-13
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -33,7 +33,7 @@
     const excludedPaths = [
         /^https:\/\/byu\.instructure\.com\/courses\/1026(\/|$)/, // Training course
         /^(https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/modules)$/, // Any course's modules page
-        /^(https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/(pages|assignments|quizzes)\/[^/]+\/edit)$/, // Any course's edit view
+        /^(https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/(pages|assignments|quizzes)\/[^/]+\/edit)(?:[?#].*)?$/, // Any course's edit view
         /^(https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/files(?:\/.*)?)$/, // Any course's files page or subfolder
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses$/, // Canvas courses page
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/?$/, // Canvas main page
