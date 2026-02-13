@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-04
+// @version      2026-02-13
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -42,6 +42,168 @@
         // Blue: background: rgba(0, 125, 255, 0.35);
     ];
 
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function customPrompt(options = {}) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement("div");
+            overlay.style.position = "fixed";
+            overlay.style.top = 0;
+            overlay.style.left = 0;
+            overlay.style.width = "100vw";
+            overlay.style.height = "100vh";
+            overlay.style.backgroundColor = "rgba(0,0,0,0.6)";
+            overlay.style.display = "flex";
+            overlay.style.alignItems = "center";
+            overlay.style.justifyContent = "center";
+            overlay.style.zIndex = 9999;
+
+            const modal = document.createElement("div");
+            modal.style.backgroundColor = "#fff";
+            modal.style.padding = "20px";
+            modal.style.borderRadius = "12px";
+            modal.style.boxShadow = "0 4px 20px rgba(0,0,0,0.3)";
+            modal.style.maxWidth = "400px";
+            modal.style.width = "90%";
+            modal.style.textAlign = "center";
+
+            // Title
+            const titleDiv = document.createElement("div");
+            titleDiv.innerHTML = "<b>Current iframe attributes:</b><br><br>";
+            titleDiv.style.marginBottom = "12px";
+            modal.appendChild(titleDiv);
+
+            // Options
+            const optionNames = ["aria-label", "aria-description", "title"];
+            optionNames.forEach(name => {
+                const value = options[name] ?? "[Empty]";
+                const optionDiv = document.createElement("div");
+                optionDiv.style.marginBottom = "6px";
+                optionDiv.style.display = "flex";
+                optionDiv.style.alignItems = "center";
+                optionDiv.style.justifyContent = "space-between";
+
+                const labelSpan = document.createElement("span");
+                labelSpan.textContent = `${name}: ${value}`;
+                optionDiv.appendChild(labelSpan);
+
+                const useBtn = document.createElement("button");
+                useBtn.textContent = "✅";
+                useBtn.disabled = !value || value === "[Empty]";
+                useBtn.onclick = () => input.value = value;
+                optionDiv.appendChild(useBtn);
+
+                modal.appendChild(optionDiv);
+            });
+
+            // Input label
+            const inputLabel = document.createElement("div");
+            inputLabel.innerHTML = "<br>Type accessible aria-label:";
+            inputLabel.style.margin = "12px 0 6px";
+            modal.appendChild(inputLabel);
+
+            // Input box
+            const input = document.createElement("input");
+            input.type = "text";
+            input.style.width = "80%";
+            input.style.padding = "6px 8px";
+            input.style.fontSize = "14px";
+            modal.appendChild(input);
+
+            // Confirm button
+            const confirmBtn = document.createElement("button");
+            confirmBtn.textContent = "Confirm";
+            confirmBtn.style.marginTop = "12px";
+            confirmBtn.style.padding = "6px 12px";
+            confirmBtn.style.fontSize = "14px";
+            confirmBtn.onclick = () => {
+                cleanup();
+                resolve(input.value);
+            };
+            modal.appendChild(confirmBtn);
+
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    confirmBtn.click();
+                }
+            });
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            input.focus();
+
+            // Block clicks on overlay background
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) e.stopPropagation();
+            });
+
+            function cleanup() { document.body.removeChild(overlay); }
+        });
+    }
+
+    async function ariaLabelUpdate(textarea) {
+        const before = textarea.value;
+        if (!before) return;
+
+        const iframeRegex = /<iframe\b([^>]*)>/gi;
+        let match;
+        let newHTML = before;
+        const matches = [];
+
+        while ((match = iframeRegex.exec(before)) !== null) {
+            matches.push({ fullMatch: match[0], attrs: match[1], index: match.index });
+        }
+
+        for (const item of matches) {
+            const { fullMatch, attrs } = item;
+
+            const titleMatch = attrs.match(/\btitle="([^"]*)"/i);
+            const descMatch = attrs.match(/\bdescription="([^"]*)"/i);
+            const ariaMatch = attrs.match(/\baria-label="([^"]*)"/i);
+
+            const title = titleMatch ? titleMatch[1] : null;
+            const description = descMatch ? descMatch[1] : null;
+            const aria = ariaMatch ? ariaMatch[1] : null;
+
+            let newLabel = "";
+            if (title && !description && !aria) newLabel = title;
+            else if (!title && description && !aria) newLabel = description;
+            else if (!title && !description && aria) newLabel = aria;
+            else {
+                newLabel = await customPrompt({
+                    "aria-label": aria,
+                    "aria-description": description,
+                    "title": title
+                });
+            }
+
+            let newAttrs = attrs
+            .replace(/\btitle="[^"]*"/i, "")
+            .replace(/\bdescription="[^"]*"/i, "")
+            .replace(/\baria-label="[^"]*"/i, "")
+            .trim();
+
+            if (newLabel) newAttrs += ` aria-label="${newLabel}"`;
+
+            newHTML = newHTML.replace(fullMatch, `<iframe ${newAttrs}>`);
+        }
+
+        textarea.value = newHTML;
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
     function enhanceTextarea(textarea) {
         if (textarea.dataset.overlayHighlight) return;
         textarea.dataset.overlayHighlight = "true";
@@ -69,7 +231,7 @@
         const searchState = { term: "", ranges: [], index: -1 };
         const searchBar = document.createElement("div");
         searchBar.style.position = "absolute";
-        searchBar.style.top = "-30px";
+        searchBar.style.top = "-35px";
         searchBar.style.right = "0";
         searchBar.style.display = "flex";
         searchBar.style.alignItems = "center";
@@ -82,6 +244,7 @@
         searchInput.placeholder = "Find…";
         searchInput.style.width = "140px";
         searchInput.style.padding = "2px 4px";
+        searchInput.style.margin = "0";
 
         const prevBtn = document.createElement("button");
         prevBtn.textContent = "▲";
@@ -94,7 +257,12 @@
         const counter = document.createElement("span");
         counter.textContent = "0 / 0";
 
-        searchBar.append(searchInput, prevBtn, nextBtn, counter);
+        const ariaFixer = document.createElement("button");
+        ariaFixer.textContent = "Fix Aria-labels";
+        ariaFixer.type = "button";
+        ariaFixer.onclick = () => ariaLabelUpdate(textarea);
+
+        searchBar.append(ariaFixer, searchInput, prevBtn, nextBtn, counter);
         wrapper.appendChild(searchBar);
 
         const mirror = document.createElement("div");
@@ -169,18 +337,6 @@
             patternOverlays.forEach(ov => {
                 ov.content.style.width = innerWidth + "px";
             });
-        }
-
-        function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#39;");
-        }
-
-        function escapeRegex(str) {
-            return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         }
 
         function mapRawIndexToEscaped(raw, escaped, rawIndex) {
