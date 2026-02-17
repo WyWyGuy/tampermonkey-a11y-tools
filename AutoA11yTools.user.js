@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-17
+// @version      2026-02-17.1
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -1285,7 +1285,10 @@
 
         const mutationObserver = new MutationObserver(mutations => {
             for (const m of mutations) {
-                if (m.target.closest('.AccessibilityHelper')) return;
+                const el = m.target.nodeType === Node.ELEMENT_NODE
+                ? m.target
+                : m.target.parentElement;
+                if (el && el.closest('.AccessibilityHelper')) return;
             }
             scan();
         });
