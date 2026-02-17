@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-13
+// @version      2026-02-17
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -446,7 +446,7 @@
             const titleColor = titleEmoji === '🔊' ? '#c00' : '#060';
 
             return (
-                `<span style="color:${ariaLabelColor}">${ariaLabelEmoji} Aria-label: ${ariaLabel}${ariaLabelFrom}</span>\n` +
+                `<span style="color:${ariaLabelColor}; font-weight: bold">${ariaLabelEmoji} Aria-label: ${ariaLabel}${ariaLabelFrom}</span>\n` +
                 `<span style="color:${ariaDescColor}">${ariaDescEmoji} Aria-description: ${ariaDesc}${ariaDescFrom}</span>\n` +
                 `<span style="color:${titleColor}">${titleEmoji} Title: ${title}</span>`
             );
