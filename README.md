@@ -47,3 +47,7 @@ This script adds a tooltip and link to help users know where files are located i
 # ElementCountingTool.user.js
 
 This script works similarly to `ModuleCountingTool.user.js`, but works on any Canvas page and counts specific HTML elements.
+
+# DropdownControlTool.user.js
+
+This script creates two new hotkeys of `ctrl + ↓` and `ctrl + ↑` to expand and collapse all dropdown menus on Canvas pages.
