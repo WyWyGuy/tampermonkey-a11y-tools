@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-18
+// @version      2026-02-18.1
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -94,7 +94,18 @@
                 optionDiv.style.justifyContent = "space-between";
 
                 const labelSpan = document.createElement("span");
-                labelSpan.textContent = `${name}: ${value}`;
+                const nameSpan = document.createElement("span");
+                nameSpan.textContent = `${name}: `;
+                const valueSpan = document.createElement("span");
+                valueSpan.textContent = value;
+                if (value && value !== "[Empty]") {
+                    valueSpan.style.fontWeight = "bold";
+                } else {
+                    valueSpan.style.fontStyle = "italic";
+                    valueSpan.style.opacity = "0.7";
+                }
+                labelSpan.appendChild(nameSpan);
+                labelSpan.appendChild(valueSpan);
                 optionDiv.appendChild(labelSpan);
 
                 const useBtn = document.createElement("button");
@@ -178,10 +189,13 @@
             const aria = ariaMatch ? ariaMatch[1] : null;
 
             let newLabel = "";
-            if (title && !description && !aria) newLabel = title;
-            else if (!title && description && !aria) newLabel = description;
-            else if (!title && !description && aria) newLabel = aria;
-            else {
+            const existing = [title, description, aria].filter(v => v && v.trim() !== "");
+
+            // If only one option exists or all options are identical, use that
+            if (existing.length > 0 && existing.every(v => v === existing[0])) {
+                newLabel = existing[0];
+            } else {
+                // Else, prompt the user to choose from the available options or write their own
                 newLabel = await customPrompt({
                     "aria-label": aria,
                     "aria-description": description,
