@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-13
+// @version      2026-02-18
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -202,6 +202,8 @@
 
         textarea.value = newHTML;
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
+
+        alert(`Fixed ${matches.length} iframe${matches.length === 1 ? "" : "s"}`);
     }
 
     function enhanceTextarea(textarea) {
