@@ -1,10 +1,13 @@
 // ==UserScript==
 // @name         Dropdown Control Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-18
+// @version      2026-02-18.1
 // @description  Use ctrl + ↓ and ctrl + ↑ hotkeys to expand and collapse all dropdown menus
 // @author       Wyatt Nilsson
-// @match        https://*/*
+// @match        https://byu.instructure.com/courses/*
+// @match        https://byuis.instructure.com/courses/*
+// @match        https://byuismastercourses.instructure.com/courses/*
+// @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/DropdownControlTool.user.js
