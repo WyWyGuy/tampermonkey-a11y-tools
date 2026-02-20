@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         H5P Language Selector
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12
+// @version      2026-02-20
 // @description  Scroll to a certain language in the H5P dropdown menu, or use ctrl + q to apply it automatically
 // @author       Wyatt Nilsson
 // @match        https://byu.h5p.com/*
@@ -33,7 +33,7 @@
     }
 
     function getNewLanguage() {
-        const userInput = prompt("Enter the language to auto-select (partial match, case-insensitive):", TARGET_TEXT);
+        const userInput = prompt("Enter the language to auto-select for H5Ps (partial match, case-insensitive):", TARGET_TEXT);
         if (!userInput) return;
 
         TARGET_TEXT = userInput.trim().toLowerCase();
