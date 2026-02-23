@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Element Counting Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-17
+// @version      2026-02-23
 // @description  Label elements to easily see their indices
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -260,7 +260,7 @@
 
     // Rebounced scanner for any page changes (like dropdowns) to force update
     let resizeTimeout;
-    const ro = new ResizeObserver(() => {console.log("CHANGED");
+    const ro = new ResizeObserver(() => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             updateFunctions.forEach(fn => fn());
@@ -269,7 +269,7 @@
     ro.observe(document.body);
 
     // Timer to ensure everything updates on a regular basis
-    setInterval(() => {console.log("regular");
+    setInterval(() => {
         updateFunctions.forEach(fn => fn());
     }, 2000);
 
