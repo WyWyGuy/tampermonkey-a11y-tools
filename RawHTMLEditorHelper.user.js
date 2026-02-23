@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-18.1
+// @version      2026-02-23
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -41,6 +41,17 @@
         // Orange: background: rgba(255,164,0,0.45);
         // Blue: background: rgba(0, 125, 255, 0.35);
     ];
+
+    const style = document.createElement("style");
+    style.textContent = `
+    .helper-canvas-style-button {
+        border-radius: 3px;
+        background-color: #002e5d;
+        color: #fff;
+        border: 1px solid #002850;
+        cursor: pointer;
+    }`;
+    document.head.appendChild(style);
 
     function escapeHtml(str) {
         return str.replace(/&/g, "&amp;")
@@ -164,6 +175,38 @@
         });
     }
 
+    function popUp(message) {
+        const toast = document.createElement("div");
+        toast.textContent = message;
+
+        Object.assign(toast.style, {
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            background: "rgba(117, 220, 238, 0.85)",
+            color: "#000",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            fontSize: "14px",
+            fontFamily: "sans-serif",
+            zIndex: "9999",
+            opacity: "0",
+            transition: "opacity 0.3s ease",
+            pointerEvents: "none"
+        });
+
+        document.body.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.style.opacity = "1";
+        });
+
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
     async function ariaLabelUpdate(textarea) {
         const before = textarea.value;
         if (!before) return;
@@ -217,12 +260,62 @@
         textarea.value = newHTML;
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
 
-        alert(`Fixed ${matches.length} iframe${matches.length === 1 ? "" : "s"}`);
+        popUp(`Processed ${matches.length} iframe${matches.length === 1 ? "" : "s"}`);
+    }
+
+    function findRealSaveButton(textarea) {
+
+        function getTextareaType(textarea) {
+            let current = textarea.parentElement;
+            while (current) {
+                if (current.classList.contains("select_answer") && current.classList.contains("answer_type")) {
+                    return "answer";
+                }
+                if (current.id && current.id.includes("question_text")) {
+                    return "question";
+                }
+                current = current.parentElement;
+            }
+            return "page";
+        }
+
+        function findNextButton(el, labels) {
+            let current = el.parentElement;
+            while (current) {
+                const candidates = Array.from(current.querySelectorAll('button, a.btn'))
+                .filter(btn => {
+                    const id = btn.id || "";
+                    const classes = btn.className || "";
+                    return !classes.includes("helper-save-btn") &&
+                        !id.includes("move_quiz_item_submit_btn") &&
+                        !classes.includes("create_group");
+                });
+                for (const btn of candidates) {
+                    if (labels.includes(btn.textContent.trim().toLowerCase())) {
+                        return btn;
+                    }
+                }
+                current = current.parentElement;
+            }
+            return null;
+        }
+
+        const type = getTextareaType(textarea);
+
+        if (type === "answer") {
+            return findNextButton(textarea, ["done"]);
+        } else if (type === "question") {
+            return findNextButton(textarea, ["update question"]);
+        } else {
+            return findNextButton(textarea, ["save"]);
+        }
     }
 
     function enhanceTextarea(textarea) {
         if (textarea.dataset.overlayHighlight) return;
         textarea.dataset.overlayHighlight = "true";
+
+        textarea.style.width = "100%";
 
         const style = getComputedStyle(textarea);
 
@@ -247,10 +340,11 @@
         const searchState = { term: "", ranges: [], index: -1 };
         const searchBar = document.createElement("div");
         searchBar.style.position = "absolute";
-        searchBar.style.top = "-35px";
+        searchBar.style.top = "-65px";
         searchBar.style.right = "0";
         searchBar.style.display = "flex";
-        searchBar.style.alignItems = "center";
+        searchBar.style.flexDirection = "column";
+        searchBar.style.alignItems = "flex-end";
         searchBar.style.gap = "4px";
         searchBar.style.fontSize = "12px";
         searchBar.style.zIndex = "200";
@@ -265,10 +359,13 @@
         const prevBtn = document.createElement("button");
         prevBtn.textContent = "▲";
         prevBtn.type = "button";
+        prevBtn.classList.add("helper-canvas-style-button");
+
 
         const nextBtn = document.createElement("button");
         nextBtn.textContent = "▼";
         nextBtn.type = "button";
+        nextBtn.classList.add("helper-canvas-style-button");
 
         const counter = document.createElement("span");
         counter.textContent = "0 / 0";
@@ -276,9 +373,35 @@
         const ariaFixer = document.createElement("button");
         ariaFixer.textContent = "Fix Aria-labels";
         ariaFixer.type = "button";
+        ariaFixer.classList.add("helper-canvas-style-button");
         ariaFixer.onclick = () => ariaLabelUpdate(textarea);
 
-        searchBar.append(ariaFixer, searchInput, prevBtn, nextBtn, counter);
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.classList.add("helper-save-btn", "helper-canvas-style-button");
+        saveBtn.textContent = "Save";
+        saveBtn.addEventListener("click", () => {
+            const realBtn = findRealSaveButton(textarea);
+            if (realBtn) {
+                realBtn.click();
+            } else {
+                popUp("No save button found.");
+            }
+        });
+
+        const buttonLine = document.createElement("div");
+        buttonLine.style.display = "flex";
+        buttonLine.style.alignItems = "center";
+        buttonLine.style.gap = "4px";
+        buttonLine.append(ariaFixer, saveBtn);
+
+        const searchLine = document.createElement("div");
+        searchLine.style.display = "flex";
+        searchLine.style.alignItems = "center";
+        searchLine.style.gap = "4px";
+        searchLine.append(searchInput, prevBtn, nextBtn, counter);
+
+        searchBar.append(buttonLine, searchLine);
         wrapper.appendChild(searchBar);
 
         const mirror = document.createElement("div");
@@ -387,8 +510,8 @@
         function focusSearchBox() {
             searchInput.focus();
             searchInput.select();
-            searchBar.style.boxShadow = "0 0 0 2px rgba(0,128,255,0.6)";
-            setTimeout(() => searchBar.style.boxShadow = "", 300);
+            searchLine.style.boxShadow = "0 0 0 2px rgba(0,128,255,0.6)";
+            setTimeout(() => searchLine.style.boxShadow = "", 300);
 
             // Ensure highlights stay in sync even if term was already there
             searchState.term = searchInput.value;
