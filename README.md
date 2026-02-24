@@ -28,7 +28,7 @@ This script helps make editing language tags quicker in H5Ps. A dialog box promp
 
 ## DownloadSLASpreadsheets.user.js
 
-This script automatically runs through four pre-named filters on Teamwork and downloads the Excel files for each filter. The filters are named `SLA - Prototypes`, `SLA - 50% Reviews`, `SLA - PSIAs`, and `SLA - Peer Verifications`.
+This script automatically runs through four pre-named filters on Teamwork and downloads the Excel files for each filter. The filters are named `SLA - Prototypes`, `SLA - 50% Reviews`, `SLA - PSIAs`, and `SLA - Peer Reviews`.
 
 ## ModuleCountingTool.user.js
 
