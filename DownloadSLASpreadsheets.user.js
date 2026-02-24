@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Download SLA Spreadsheets
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12
+// @version      2026-02-24
 // @description  Automate downloading Excel spreadsheets from Teamwork
 // @author       Wyatt Nilsson
 // @match        https://byuis.teamwork.com/*
@@ -103,7 +103,7 @@ async function downloadSLA() {
 
     //Loop through SLA filters and click the download button for each
     const failedDownloads = [];
-    const SLAFilters = ["SLA - Prototypes", "SLA - 50% Reviews", "SLA - PSIAs", "SLA - Peer Verifications"];
+    const SLAFilters = ["SLA - Prototypes", "SLA - 50% Reviews", "SLA - PSIAs", "SLA - Peer Reviews"];
     for (const textMatch of SLAFilters) {
         const matchingSpans = Array.from(document.querySelectorAll('span.saved-filter__title')).filter(span => span.textContent.trim().includes(textMatch));
         if (matchingSpans.length > 0) {
