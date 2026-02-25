@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Dropdown Control Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-18.1
-// @description  Use ctrl + ↓ and ctrl + ↑ hotkeys to expand and collapse all dropdown menus
+// @version      2026-02-25
+// @description  Use alt + ↓ and alt + ↑ hotkeys to expand and collapse all dropdown menus
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
 // @match        https://byuis.instructure.com/courses/*
@@ -38,11 +38,11 @@
     }
 
     document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.key === 'ArrowDown') {
+        if (e.altKey && e.key === 'ArrowDown') {
             e.preventDefault();
             expandAll();
         }
-        if (e.ctrlKey && e.key === 'ArrowUp') {
+        if (e.altKey && e.key === 'ArrowUp') {
             e.preventDefault();
             collapseAll();
         }
