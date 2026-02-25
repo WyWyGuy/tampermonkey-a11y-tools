@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Canvas File Path Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-02
+// @version      2026-02-25
 // @description  Help locate files in Canvas file menu
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -142,10 +142,31 @@
                 folderLink.style.marginLeft = "0.5em";
                 folderLink.target = "_blank";
 
-                if (!link.nextSibling || !link.nextSibling.classList?.contains('canvas-folder-link')) {
-                    folderLink.classList.add('canvas-folder-link');
-                    link.parentNode.insertBefore(folderLink, link.nextSibling);
-                }
+                const cell = link.closest("td");
+                if (!cell) return;
+
+                if (cell.querySelector(".canvas-folder-link")) return;
+
+                cell.style.position = "relative";
+
+                folderLink.classList.add("canvas-folder-link");
+                folderLink.style.position = "absolute";
+                folderLink.style.left = "55px";
+                folderLink.style.top = "82%";
+                folderLink.style.transform = "translateY(-50%)";
+                folderLink.style.fontSize = "0.8em";
+                folderLink.style.textDecoration = "none";
+                folderLink.style.whiteSpace = "nowrap";
+
+                folderLink.addEventListener("mouseenter", () => {
+                    folderLink.style.textDecoration = "underline";
+                });
+
+                folderLink.addEventListener("mouseleave", () => {
+                    folderLink.style.textDecoration = "none";
+                });
+
+                cell.appendChild(folderLink);
             }
 
         } catch (err) {
