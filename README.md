@@ -1,6 +1,6 @@
 # A11y Tools
 
-This GitHub repository is a storage location for digital accessibility userscripts that work with the Tampermonkey extension. They primarily interact with the Canvas LMS to make identifying and fixing accessibility issues easier and faster. If you have Tampermonkey installed, simply click the file you'd like to install followed by the `Raw` button. Tampermonkey will recognize the code and prompt you to install it.
+This GitHub repository is a storage location for digital accessibility userscripts that work with the Tampermonkey extension. They primarily interact with the Canvas LMS to make identifying and fixing accessibility issues easier and faster. If you have Tampermonkey installed, simply click the file you'd like to install, followed by the `Raw` button. Tampermonkey will recognize the code and prompt you to install it.
 
 ## AutoA11yTools.user.js
 
@@ -63,4 +63,4 @@ This script toggles 1-indexed borders around the element type selected from the 
 
 ## DropdownControlTool.user.js
 
-This script allows you to type `Ctrl + ↓` and `Ctrl + ↑` to expand and collapse all dropdown menus on Canvas pages, which makes seeing all content on the page easier.
+This script allows you to type `Alt + ↓` and `Alt + ↑` to expand and collapse all dropdown menus on Canvas pages, which makes seeing all content on the page easier.
