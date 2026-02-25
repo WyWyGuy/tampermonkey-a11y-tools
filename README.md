@@ -63,4 +63,4 @@ This script toggles 1-indexed borders around the element type selected from the 
 
 ## DropdownControlTool.user.js
 
-This script allows you to type `Alt + ↓` and `Alt + ↑` to expand and collapse all dropdown menus on Canvas pages, which makes seeing all content on the page easier.
+This script allows you to type `Alt + ↓` and `Alt + ↑` to expand and collapse all dropdown menus on Canvas pages, which makes seeing all content on the page easier. It also has a menu command to enable dropdown expansion by default.
