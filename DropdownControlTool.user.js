@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Dropdown Control Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-25.1
+// @version      2026-02-25.2
 // @description  Use alt + ↓ and alt + ↑ hotkeys to expand and collapse all dropdown menus. Also, adds a menu command to expand dropdowns by default
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -65,9 +65,11 @@
         const observer = new MutationObserver(() => {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                expandAll();
+                timeout = setTimeout(() => {
+                    expandAll();
+                }, 500);
                 observer.disconnect();
-            }, 250);
+            }, 500);
         });
         observer.observe(document.body, {
             childList: true,
