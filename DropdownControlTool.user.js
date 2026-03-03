@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Dropdown Control Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-27
+// @version      2026-03-03
 // @description  Use alt + ↓ and alt + ↑ hotkeys to expand and collapse all dropdown menus. Also, adds a menu command to expand dropdowns by default
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -23,6 +23,13 @@
     const AUTO_EXPAND_KEY = 'autoExpand';
     let autoExpandEnabled = GM_getValue(AUTO_EXPAND_KEY, false);
     let menuId = null;
+
+    const excludedPaths = [
+        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-prototype-review(?:.*)?$/,
+        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-50-percent-review(?:.*)?$/,
+        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-psia-checklist(?:.*)?$/,
+        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-peer-verification(?:.*)?$/
+    ];
 
     function updateMenu() {
         if (menuId) {
@@ -60,6 +67,7 @@
 
     function runWhenPageLoaded() {
         if (!autoExpandEnabled) return;
+        if (excludedPaths.some(regex => regex.test(window.location.href))) return;
 
         let timeout = null;
         const observer = new MutationObserver(() => {
