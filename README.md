@@ -47,7 +47,7 @@ This script is a custom color contrast checker tool. Clicking it from the Tamper
 
 ### H5PLanguageSelector.user.js
 
-This script helps make editing language tags quicker in H5Ps. A dialog box prompts you to select a language, and this setting can be changed using the Tampermonkey dropdown menu. To use the tool, simply select the text you'd like to edit on an H5P, then type `Ctrl + Q` to apply the currently chosen language attribute to that text or click the language dropdown menu to automatically scroll to that language in the list.
+This script helps make editing language tags quicker in H5Ps. A dialog box prompts you to select a language, and this setting can be changed using the Tampermonkey dropdown menu. To use the tool, simply select the text you'd like to edit on an H5P, then type `Ctrl + Q` (or `Cmd + Q` on Mac) to apply the currently chosen language attribute to that text or click the language dropdown menu to automatically scroll to that language in the list.
 
 ### DownloadSLASpreadsheets.user.js
 
@@ -74,7 +74,7 @@ This script adds extra functionality to the raw HTML editor to make it more usab
 | ![#800080](https://placehold.co/15x15/800080/800080.png) - `#800080` | \<h#\>some heading\</h#\> (darker for \<h1\>, lighter for \<h6\>) |
 | ![#005000](https://placehold.co/15x15/005000/005000.png) - `#005000` | lang="some lang attribute"                                               |
 
-In addition to adding these highlights, this script adds a refined search box above the editor. It integrates with `Ctrl + F`. It also adds a button to fix aria-labels. When clicking this button, it modifies all iframes to only have aria-labels. If only one unique label (title, aria-label, or aria-description) exists, it assigns that. Otherwise, it prompts you to choose an accessible aria-label or type your own.
+In addition to adding these highlights, this script adds a refined search box above the editor. It integrates with `Ctrl + F` (`Cmd + F` on Mac). It also adds a button to fix aria-labels. When clicking this button, it modifies all iframes to only have aria-labels. If only one unique label (title, aria-label, or aria-description) exists, it assigns that. Otherwise, it prompts you to choose an accessible aria-label or type your own.
 
 ### CanvasFilePathTool.user.js
 
@@ -86,4 +86,4 @@ This script toggles 1-indexed borders around the element type selected from the 
 
 ### DropdownControlTool.user.js
 
-This script allows you to type `Alt + ↓` and `Alt + ↑` to expand and collapse all dropdown menus on Canvas pages, which makes seeing all content on the page easier. It also has a menu command to enable dropdown expansion by default.
+This script allows you to type `Alt + ↓` and `Alt + ↑` (`Option + ↓` and `Option + ↑` on Mac) to expand and collapse all dropdown menus on Canvas pages, which makes seeing all content on the page easier. It also has a menu command to enable dropdown expansion by default.
