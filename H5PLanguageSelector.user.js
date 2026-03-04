@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         H5P Language Selector
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-20
+// @version      2026-03-04
 // @description  Scroll to a certain language in the H5P dropdown menu, or use ctrl + q to apply it automatically
 // @author       Wyatt Nilsson
 // @match        https://byu.h5p.com/*
@@ -182,7 +182,7 @@
 
         function keyHandler(e) {
             try {
-                if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'KeyQ') {
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyQ') {
                     e.preventDefault();
 
                     // 1) If a visible panel already exists, use it
