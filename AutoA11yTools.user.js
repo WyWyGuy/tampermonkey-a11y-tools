@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-17.1
+// @version      2026-03-09
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -39,7 +39,8 @@
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/?$/, // Canvas main page
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/calendar(?:\/.*|[#?].*)?$/, // Canvas calendar page
         /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/conversations(?:\/.*|[#?].*)?$/, // Canvas inbox page
-        /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/?$/ // Any course's home page
+        /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/courses\/\d+\/?$/, // Any course's home page
+        /^https:\/\/(?:byu|byuis|byuismastercourses|byuohs)\.instructure\.com\/profile\/settings(?:[/?#].*)?$/ // Canvas settings page
     ];
     const currentHost = window.location.hostname;
     const isAutoRunDomain = autoRunDomains.includes(currentHost);
