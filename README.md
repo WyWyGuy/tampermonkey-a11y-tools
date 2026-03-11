@@ -43,7 +43,7 @@ This script provides multiple accessibility auditing tools that automatically ru
 
 ### ColorChecker.user.js
 
-This script is a custom color contrast checker tool. Clicking it from the Tampermonkey menu toggles the checker, and then you can hover over text to see the color codes, contrast ratio, and whether or not it passes the WCAG requirements. It also accounts for font size. It uses the same color logic as the contrast issues tool from `AutoA11yTools.user.js`.
+This script is a custom color contrast checker tool. Clicking it from the Tampermonkey menu toggles the checker, and then you can hover over text to see the color codes, contrast ratio, and whether or not it passes the WCAG requirements. It also accounts for font size. It uses the same color logic as the contrast issues tool from `AutoA11yTools.user.js`. Using `Shift + Click` and `Shift + Right Click`, you can copy the hex codes for the text and background, respectively.
 
 ### H5PLanguageSelector.user.js
 
