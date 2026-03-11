@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-23
+// @version      2026-03-11
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -9,13 +9,19 @@
 // @match        https://byuismastercourses.instructure.com/courses/*
 // @match        https://byuohs.instructure.com/courses/*
 // @icon         https://assets.topadvisor.com/media/_solution_logo_03202023_46576647.png
-// @grant        none
+// @grant        GM_registerMenuCommand
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @updateURL    https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/RawHTMLEditorHelper.user.js
 // @downloadURL  https://raw.githubusercontent.com/WyWyGuy/tampermonkey-auto-a11y-tools-script/main/RawHTMLEditorHelper.user.js
 // ==/UserScript==
 
 (function () {
     "use strict";
+
+    // Load auto-click settings
+    const AUTO_HTML_KEY = "auto_html_editor";
+    let autoSwitch = GM_getValue(AUTO_HTML_KEY, true);
 
     // Only run on edit pages and question bank pages
     const path = location.pathname;
@@ -53,6 +59,81 @@
     }`;
     document.head.appendChild(style);
 
+    // Auto-click functionality
+    function registerMenu() {
+        GM_registerMenuCommand(
+            `${autoSwitch ? "🟩" : "⬜"} Default Editor: ${autoSwitch ? "Raw" : "Regular"}`,
+            () => {
+                autoSwitch = !autoSwitch;
+                GM_setValue(AUTO_HTML_KEY, autoSwitch);
+                registerMenu();
+                scanForButtons();
+            },
+            { id: "auto-html-toggle" }
+        );
+    }
+
+    registerMenu();
+
+    const clicked = new WeakSet();
+
+    function clickIfEligible(el) {
+        if (!el || clicked.has(el)) return;
+        clicked.add(el);
+        setTimeout(() => el.click(), 250);
+    }
+
+    function scanForButtons(root = document) {
+        const rawMatches = [...root.querySelectorAll("button")].filter(el => el.textContent.includes("Switch to raw HTML Editor"));
+        rawMatches.forEach(clickIfEligible);
+
+        if (autoSwitch) {
+            const htmlButtons = [...root.querySelectorAll("button")].filter(el => {
+                if (clicked.has(el)) return false;
+
+                const title = el.getAttribute?.("title") || "";
+                const text = el.textContent || "";
+
+                return (
+                    title.includes("Switch to the rich text editor") ||
+                    title.includes("Click or shift-click for the html editor") ||
+                    text.includes("Switch to the rich text editor") ||
+                    text.includes("Switch to the html editor")
+                );
+            });
+
+            htmlButtons.forEach(el => {
+                const title = el.getAttribute?.("title") || "";
+                const text = el.textContent || "";
+                if (title.includes("Click or shift-click for the html editor") || text.includes("Switch to the html editor")) {
+                    clickIfEligible(el);
+                }
+            });
+        }
+    }
+
+    scanForButtons();
+
+    const rawButtonObserver = new MutationObserver(mutations => {
+        for (const m of mutations) {
+            if (m.addedNodes) {
+                for (const node of m.addedNodes) {
+                    if (node.nodeType === 1) {
+                        scanForButtons(node);
+                    }
+                }
+            }
+        }
+    });
+
+    rawButtonObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+
+    setInterval(scanForButtons, 500);
+
+    // Helper functions
     function escapeHtml(str) {
         return str.replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -65,7 +146,7 @@
         return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
-    function customPrompt(options = {}) {
+    function customPrompt(options = {}, src = null) {
         return new Promise((resolve) => {
             const overlay = document.createElement("div");
             overlay.style.position = "fixed";
@@ -127,6 +208,10 @@
 
                 modal.appendChild(optionDiv);
             });
+
+            const iframe = document.createElement("iframe");
+            iframe.src = src;
+            modal.appendChild(iframe);
 
             // Input label
             const inputLabel = document.createElement("div");
@@ -234,16 +319,23 @@
             let newLabel = "";
             const existing = [title, description, aria].filter(v => v && v.trim() !== "");
 
-            // If only one option exists or all options are identical, use that
-            if (existing.length > 0 && existing.every(v => v === existing[0])) {
+            // If only one option exists or all options are identical, and the only option doesn't say "video player", use that
+            if (
+                existing.length > 0 &&
+                existing.every(v => v === existing[0]) &&
+                !existing[0].toLowerCase().includes("video player")
+            ) {
                 newLabel = existing[0];
             } else {
                 // Else, prompt the user to choose from the available options or write their own
+                const previewMatch = attrs.match(/\bsrc="([^"]*)"/i);
+                const preview = previewMatch ? previewMatch[1] : null;
+
                 newLabel = await customPrompt({
                     "aria-label": aria,
                     "aria-description": description,
                     "title": title
-                });
+                }, preview);
             }
 
             let newAttrs = attrs
@@ -315,7 +407,20 @@
         if (textarea.dataset.overlayHighlight) return;
         textarea.dataset.overlayHighlight = "true";
 
+        // Expand the raw editor
         textarea.style.width = "100%";
+        if ((textarea.value.split("\n").length > 15) || (textarea.value.length > 2000)) {
+            textarea.style.height = "800px";
+        }
+
+        // Scroll to the top once loaded
+        const checkLoaded = setInterval(() => {
+            if (textarea.scrollHeight && textarea.scrollHeight > 0) {
+                textarea.scrollTop = 0;
+                overlaysScrollSync();
+                clearInterval(checkLoaded);
+            }
+        }, 250);
 
         const style = getComputedStyle(textarea);
 
@@ -567,14 +672,14 @@
             });
         }
 
-        function scrollToMatch(index) {
+        function scrollToMatch(index, focus) {
             if (!searchState.ranges.length) return;
 
             const r = searchState.ranges[index];
 
             // Selection (still correct)
             textarea.setSelectionRange(r.start, r.end);
-            textarea.focus();
+            if (focus) {textarea.focus();}
 
             // Sync mirror width
             mirror.style.width = textarea.clientWidth + "px";
@@ -594,7 +699,7 @@
             if (!searchState.ranges.length) return;
             searchState.index = (searchState.index + dir + searchState.ranges.length) % searchState.ranges.length;
             syncOverlays();
-            scrollToMatch(searchState.index);
+            scrollToMatch(searchState.index, true);
         }
 
         // --- EVENTS ---
@@ -610,6 +715,7 @@
             searchState.term = searchInput.value;
             searchState.index = searchState.term ? 0 : -1;
             syncOverlays();
+            if (searchState.index !== -1) scrollToMatch(searchState.index, false);
         });
         prevBtn.addEventListener("click", () => jumpToMatch(-1));
         nextBtn.addEventListener("click", () => jumpToMatch(1));
