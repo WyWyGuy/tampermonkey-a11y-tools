@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Click Raw HTML Editor
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-10
+// @version      2025-03-11
 // @description  Automatically select the raw HTML editor option on Canvas edit pages
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -18,6 +18,9 @@
 
 (function () {
     "use strict";
+
+    // Deprecated tool, functionality has been combined with Raw HTML Editor Helper
+    return;
 
     const AUTO_HTML_KEY = "auto_html_editor";
     let autoSwitch = GM_getValue(AUTO_HTML_KEY, true);
@@ -42,13 +45,16 @@
     function clickIfEligible(el) {
         if (!el || clicked.has(el)) return;
         clicked.add(el);
-        setTimeout(() => el.click(), 250);
+        setTimeout(() => {
+            el.click();
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: "instant" });
+            }, 300);
+        }, 250);
     }
 
     function scanForButtons(root = document) {
-        const rawMatches = [...root.querySelectorAll("button")].filter(el =>
-            el.textContent.includes("Switch to raw HTML Editor")
-        );
+        const rawMatches = [...root.querySelectorAll("button")].filter(el => el.textContent.includes("Switch to raw HTML Editor"));
         rawMatches.forEach(clickIfEligible);
 
         if (autoSwitch) {
