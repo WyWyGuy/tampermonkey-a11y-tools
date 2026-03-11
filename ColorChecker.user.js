@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Color Checker
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-12
+// @version      2026-03-11
 // @description  Hover over any text to see its color contrast
 // @author       Wyatt Nilsson
 // @match        https://*/*
@@ -15,6 +15,8 @@
     'use strict';
 
     let inspectorEnabled = false;
+    let color_global = "";
+    let bg_global = "";
 
     GM_registerMenuCommand('Toggle Color Inspector', () => {
         inspectorEnabled = !inspectorEnabled;
@@ -103,9 +105,12 @@
         const wcagPass = ratio >= threshold ? '✅ Pass' : '❌ Fail';
         const sizeNote = largeText ? ' (large text)' : '';
 
+        color_global = colorHex;
+        bg_global = bgHex;
+
         tooltip.innerHTML = `
-          Text: ${colorHex} <span style="display:inline-block;width:16px;height:16px;background:${colorHex};border:1px solid #fff;margin-left:6px;"></span><br>
-          Background: ${bgHex} <span style="display:inline-block;width:16px;height:16px;background:${bgHex};border:1px solid #fff;margin-left:6px;"></span><br>
+          Text: ${colorHex} <span style="display:inline-block;width:16px;height:16px;background:${colorHex};border:1px solid #fff;margin-left:6px;vertical-align: middle;"></span> <small style="vertical-align: middle;font-size: 0.75em;margin-top:4px;color:#aaa;">Shift + Click to copy</small><br>
+          Background: ${bgHex} <span style="display:inline-block;width:16px;height:16px;background:${bgHex};border:1px solid #fff;margin-left:6px;vertical-align: middle;"></span> <small style="vertical-align: middle;font-size: 0.75em;margin-top:4px;color:#aaa;">Shift + Right Click to copy</small><br>
           Contrast Ratio: ${ratioRounded}${sizeNote} (${wcagPass})
         `;
         tooltip.style.display = 'block';
@@ -120,5 +125,22 @@
     document.addEventListener('mouseout', () => {
         tooltip.style.display = 'none';
     });
+
+    document.addEventListener('click', e => {
+        if (!inspectorEnabled || !e.shiftKey) return;
+        if (e.button === 0) {
+            navigator.clipboard.writeText(color_global);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+
+    document.addEventListener('contextmenu', e => {
+        if (!inspectorEnabled || !e.shiftKey) return;
+        navigator.clipboard.writeText(bg_global);
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
 })();
 
