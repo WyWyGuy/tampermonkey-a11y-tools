@@ -59,7 +59,7 @@ This script labels each module in Canvas with its index (1-indexed) to easily de
 
 ### ClickRawHTMLEditor.user.js
 
-This script switches away from the pretty HTML editor to the raw HTML editor on Canvas edit pages. If the option is toggled on, it also automatically switches from the visual editor to the raw HTML editor.
+This script has been deprecated, as its functionality has been incorporated into `RawHTMLEditorHelper.user.js`.
 
 ### RawHTMLEditorHelper.user.js
 
@@ -74,7 +74,7 @@ This script adds extra functionality to the raw HTML editor to make it more usab
 | ![#800080](https://placehold.co/15x15/800080/800080.png) - `#800080` | \<h#\>some heading\</h#\> (darker for \<h1\>, lighter for \<h6\>) |
 | ![#005000](https://placehold.co/15x15/005000/005000.png) - `#005000` | lang="some lang attribute"                                               |
 
-In addition to adding these highlights, this script adds a refined search box above the editor. It integrates with `Ctrl + F` (`Cmd + F` on Mac). It also adds a button to fix aria-labels. When clicking this button, it modifies all iframes to only have aria-labels. If only one unique label (title, aria-label, or aria-description) exists, it assigns that. Otherwise, it prompts you to choose an accessible aria-label or type your own.
+In addition to adding these highlights, this script adds a refined search box above the editor. It integrates with `Ctrl + F` (`Cmd + F` on Mac). It also adds a button to fix aria-labels. When clicking this button, it modifies all iframes to only have aria-labels. If only one unique label (title, aria-label, or aria-description) exists, it assigns that. Otherwise, it prompts you to choose an accessible aria-label or type your own. Finally, this script also expands the HTML editor's default size for easier viewing.
 
 ### CanvasFilePathTool.user.js
 
