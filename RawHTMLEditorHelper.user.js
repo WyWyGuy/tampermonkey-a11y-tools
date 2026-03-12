@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-11
+// @version      2026-03-12
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -169,13 +169,11 @@
             modal.style.width = "90%";
             modal.style.textAlign = "center";
 
-            // Title
             const titleDiv = document.createElement("div");
             titleDiv.innerHTML = "<b>Current iframe attributes:</b><br><br>";
             titleDiv.style.marginBottom = "12px";
             modal.appendChild(titleDiv);
 
-            // Options
             const optionNames = ["aria-label", "aria-description", "title"];
             optionNames.forEach(name => {
                 const value = options[name] ?? "[Empty]";
@@ -213,13 +211,11 @@
             iframe.src = src;
             modal.appendChild(iframe);
 
-            // Input label
             const inputLabel = document.createElement("div");
             inputLabel.innerHTML = "<br>Type accessible aria-label:";
             inputLabel.style.margin = "12px 0 6px";
             modal.appendChild(inputLabel);
 
-            // Input box
             const input = document.createElement("input");
             input.type = "text";
             input.style.width = "80%";
@@ -227,7 +223,6 @@
             input.style.fontSize = "14px";
             modal.appendChild(input);
 
-            // Confirm button
             const confirmBtn = document.createElement("button");
             confirmBtn.textContent = "Confirm";
             confirmBtn.style.marginTop = "12px";
@@ -251,7 +246,6 @@
 
             input.focus();
 
-            // Block clicks on overlay background
             overlay.addEventListener("click", (e) => {
                 if (e.target === overlay) e.stopPropagation();
             });
@@ -403,6 +397,7 @@
         }
     }
 
+    // Primary function (runs per textarea)
     function enhanceTextarea(textarea) {
         if (textarea.dataset.overlayHighlight) return;
         textarea.dataset.overlayHighlight = "true";
@@ -422,9 +417,9 @@
             }
         }, 250);
 
+        // Create additional buttons above textarea
         const style = getComputedStyle(textarea);
 
-        // --- wrapper ---
         const wrapper = document.createElement("div");
         wrapper.classList.add("RawHtmlOverlayWrapper");
         wrapper.style.position = "relative";
@@ -432,16 +427,13 @@
         wrapper.style.width = "100%";
         wrapper.style.boxSizing = "border-box";
 
-        // Make textarea transparent and layer above overlays
         textarea.style.position = "relative";
         textarea.style.zIndex = "100";
         textarea.style.background = "transparent";
 
-        // Insert wrapper into DOM
         textarea.parentNode.insertBefore(wrapper, textarea);
         wrapper.appendChild(textarea);
 
-        // --- SEARCH UI ---
         const searchState = { term: "", ranges: [], index: -1 };
         const searchBar = document.createElement("div");
         searchBar.style.position = "absolute";
@@ -460,6 +452,11 @@
         searchInput.style.width = "140px";
         searchInput.style.padding = "2px 4px";
         searchInput.style.margin = "0";
+        searchInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+            }
+        });
 
         const prevBtn = document.createElement("button");
         prevBtn.textContent = "▲";
@@ -527,7 +524,7 @@
 
         wrapper.appendChild(mirror);
 
-        // --- OVERLAYS ---
+        // Create highlight overlays
         function createOverlay(zIndex) {
             const ov = document.createElement("div");
             ov.style.position = "absolute";
@@ -545,7 +542,6 @@
             const content = document.createElement("div");
             ov.appendChild(content);
 
-            // copy font styles
             content.style.fontFamily = style.fontFamily;
             content.style.fontSize = style.fontSize;
             content.style.fontWeight = style.fontWeight;
@@ -574,7 +570,7 @@
         const patternOverlays = SEARCH_PATTERNS.map(() => createOverlay(0));
         patternOverlays.forEach(ov => wrapper.appendChild(ov.container));
 
-        // --- HELPERS ---
+        // Overlay helper functions
         function syncAllOverlayWidths() {
             const innerWidth = textarea.getBoundingClientRect().width - (textarea.offsetWidth - textarea.clientWidth);
             findOverlay.content.style.width = innerWidth + "px";
@@ -618,7 +614,6 @@
             searchLine.style.boxShadow = "0 0 0 2px rgba(0,128,255,0.6)";
             setTimeout(() => searchLine.style.boxShadow = "", 300);
 
-            // Ensure highlights stay in sync even if term was already there
             searchState.term = searchInput.value;
             searchState.index = searchState.term ? 0 : -1;
             syncOverlays();
@@ -632,7 +627,6 @@
             const raw = textarea.value;
             const rawEscaped = escapeHtml(raw);
 
-            // --- find overlay ---
             searchState.ranges = [];
             if (searchState.term) {
                 const re = new RegExp(escapeRegex(searchState.term), "gi");
@@ -647,14 +641,12 @@
             }));
             findOverlay.content.innerHTML = injectHighlights(rawEscaped, mappedFind, searchState.index);
 
-            // --- pattern overlays ---
             SEARCH_PATTERNS.forEach((p, i) => {
                 patternOverlays[i].content.innerHTML = rawEscaped.replace(p.regex, match => {
                     return `<span style="${p.style}">${match}</span>`;
                 });
             });
 
-            // sync scroll
             overlaysScrollSync();
             counter.textContent = searchState.ranges.length
                 ? `${searchState.index + 1} / ${searchState.ranges.length}`
@@ -677,19 +669,15 @@
 
             const r = searchState.ranges[index];
 
-            // Selection (still correct)
             textarea.setSelectionRange(r.start, r.end);
             if (focus) {textarea.focus();}
 
-            // Sync mirror width
             mirror.style.width = textarea.clientWidth + "px";
 
-            // Measure caret position
             mirror.textContent = textarea.value.slice(0, r.start);
 
             const caretY = mirror.scrollHeight;
 
-            // Scroll so caret is comfortably visible
             textarea.scrollTop = Math.max(0, caretY - textarea.clientHeight / 3);
 
             overlaysScrollSync();
@@ -702,7 +690,7 @@
             scrollToMatch(searchState.index, true);
         }
 
-        // --- EVENTS ---
+        // Overlay update listeners
         textarea.addEventListener("input", syncOverlays);
         textarea.addEventListener("scroll", overlaysScrollSync);
         textarea.addEventListener("focus", syncOverlays);
@@ -720,11 +708,10 @@
         prevBtn.addEventListener("click", () => jumpToMatch(-1));
         nextBtn.addEventListener("click", () => jumpToMatch(1));
 
-        new ResizeObserver(syncOverlays).observe(textarea);
+        new ResizeObserver(() => syncOverlays()).observe(textarea);
 
         function globalCtrlFHandler(e) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-                // Only hijack if this textarea is visible
                 if (!wrapper.isConnected) return;
 
                 e.preventDefault();
@@ -732,7 +719,7 @@
             }
         }
 
-        // initial sync
+        // Initial sync
         syncOverlays();
     }
 
@@ -740,6 +727,7 @@
         document.querySelectorAll('textarea[data-rich_text="true"]').forEach(enhanceTextarea);
     }
 
+    // Key capture
     document.addEventListener("keydown", e => {
         if (!(e.ctrlKey || e.metaKey)) return;
         if (e.key.toLowerCase() !== "f") return;
@@ -775,7 +763,7 @@
             }
         }
 
-        // Case 4 (DEFAULT): No relevant focus → open first editor search box
+        // Case 4 (default): No relevant focus -> open first editor search box
         const firstWrapper = document.querySelector(".RawHtmlOverlayWrapper");
         if (firstWrapper?._focusSearchBox) {
             e.preventDefault();
@@ -783,9 +771,10 @@
         }
     });
 
-
+    // Initial scan
     scan();
 
+    // Find newly created textareas
     new MutationObserver(mutations => {
         for (const m of mutations) {
             if (m.addedNodes.length) {
