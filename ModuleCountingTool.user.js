@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Module Counting Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-02-04
+// @version      2026-03-13
 // @description  Label modules to easily see their indices
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -25,15 +25,15 @@
         return;
     }
 
-    // Remove any old helper elements
-    document.querySelectorAll('.AccessibilityHelper-label,.AccessibilityHelper-border').forEach(e => e.remove());
+    // Remove any old module elements
+    document.querySelectorAll('.AccessibilityModule-label,.AccessibilityModule-border').forEach(e => e.remove());
 
     // Inject styles once
-    if (!document.getElementById('accessibility-helper-style')) {
+    if (!document.getElementById('accessibility-module-style')) {
         const s = document.createElement('style');
-        s.id = 'accessibility-helper-style';
+        s.id = 'accessibility-module-style';
         s.textContent = `
-            .AccessibilityHelper-label {
+            .AccessibilityModule-label {
                 background:#FFF;
                 border:3px solid #CCC;
                 border-radius:4px;
@@ -46,7 +46,7 @@
                 transition:all 0.2s ease;
                 display:none;
             }
-            .AccessibilityHelper-border {
+            .AccessibilityModule-border {
                 position:absolute;
                 border:3px solid #CCC;
                 border-radius:4px;
@@ -55,7 +55,7 @@
                 transition:all 0.2s ease;
                 display:none;
             }
-            .AccessibilityHelper-highlight {
+            .AccessibilityModule-highlight {
                 border-color:#393!important;
                 box-shadow:1px 2px 5px #CCC;
             }
@@ -76,7 +76,7 @@
 
     modules.forEach((mod, i) => {
         const label = document.createElement('div');
-        label.className = 'AccessibilityHelper AccessibilityHelper-label';
+        label.className = 'AccessibilityModule AccessibilityModule-label';
         label.innerHTML = `Module ${i + 1} (<u class="open-all-links" style="cursor:pointer;color:#0066cc;">Open all pages</u>)`;
 
         const openAllBtn = label.querySelector('.open-all-links');
@@ -107,7 +107,7 @@
 
 
         const border = document.createElement('div');
-        border.className = 'AccessibilityHelper AccessibilityHelper-border';
+        border.className = 'AccessibilityModule AccessibilityModule-border';
 
         document.body.appendChild(label);
         document.body.appendChild(border);
@@ -132,12 +132,12 @@
         }
 
         function hi() {
-            label.classList.add('AccessibilityHelper-highlight');
-            border.classList.add('AccessibilityHelper-highlight');
+            label.classList.add('AccessibilityModule-highlight');
+            border.classList.add('AccessibilityModule-highlight');
         }
         function un() {
-            label.classList.remove('AccessibilityHelper-highlight');
-            border.classList.remove('AccessibilityHelper-highlight');
+            label.classList.remove('AccessibilityModule-highlight');
+            border.classList.remove('AccessibilityModule-highlight');
         }
 
         label.addEventListener('mouseover', hi);
