@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-12
+// @version      2026-03-16
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -622,6 +622,8 @@
         wrapper._focusSearchBox = focusSearchBox;
 
         function syncOverlays() {
+            if (getComputedStyle(textarea).display === 'none') return;
+
             syncAllOverlayWidths();
 
             const raw = textarea.value;
