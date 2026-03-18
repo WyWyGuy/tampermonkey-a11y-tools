@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-16
+// @version      2026-03-18
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -399,14 +399,15 @@
 
     // Primary function (runs per textarea)
     function enhanceTextarea(textarea) {
-        if (textarea.dataset.overlayHighlight) return;
-        textarea.dataset.overlayHighlight = "true";
-
         // Expand the raw editor
         textarea.style.width = "100%";
         if ((textarea.value.split("\n").length > 15) || (textarea.value.length > 2000)) {
             textarea.style.height = "800px";
         }
+
+        // Early return if processed
+        if (textarea.dataset.overlayHighlight) return;
+        textarea.dataset.overlayHighlight = "true";
 
         // Scroll to the top once loaded
         const checkLoaded = setInterval(() => {
@@ -729,6 +730,30 @@
         document.querySelectorAll('textarea[data-rich_text="true"]').forEach(enhanceTextarea);
     }
 
+    // Helper for rich content editors
+    const resizedEditors = new WeakSet();
+    function resizeRichEditor(root = document) {
+        const editors = root.querySelectorAll('.tox.tox-tinymce');
+        editors.forEach(el => {
+            if (resizedEditors.has(el)) return;
+            const iframe = el.querySelector('iframe');
+            if (!iframe) return;
+            let body;
+            try {
+                body = iframe.contentDocument?.body;
+            } catch {
+                return;
+            }
+            if (!body) return;
+            const text = body.innerText || "";
+            const html = body.innerHTML || "";
+            if (text.split("\n").length > 15 || html.length > 2000) {
+                el.style.height = "800px";
+                resizedEditors.add(el);
+            }
+        });
+    }
+
     // Key capture
     document.addEventListener("keydown", e => {
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -781,6 +806,11 @@
         for (const m of mutations) {
             if (m.addedNodes.length) {
                 scan();
+                for (const node of m.addedNodes) {
+                    if (node.nodeType === 1 && node.parentElement != null) {
+                        resizeRichEditor(node.parentElement);
+                    }
+                }
                 break;
             }
         }
