@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-09
+// @version      2026-03-20
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -268,6 +268,14 @@
         return true;
     }
 
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
     const updateFunctions = [];
 
     // Tool implementations
@@ -447,9 +455,9 @@
             const titleColor = titleEmoji === '🔊' ? '#c00' : '#060';
 
             return (
-                `<span style="color:${ariaLabelColor}; font-weight: bold">${ariaLabelEmoji} Aria-label: ${ariaLabel}${ariaLabelFrom}</span>\n` +
-                `<span style="color:${ariaDescColor}">${ariaDescEmoji} Aria-description: ${ariaDesc}${ariaDescFrom}</span>\n` +
-                `<span style="color:${titleColor}">${titleEmoji} Title: ${title}</span>`
+                `<span style="color:${ariaLabelColor}; font-weight: bold">${ariaLabelEmoji} Aria-label: ${escapeHtml(ariaLabel)}${escapeHtml(ariaLabelFrom)}</span>\n` +
+                `<span style="color:${ariaDescColor}">${ariaDescEmoji} Aria-description: ${escapeHtml(ariaDesc)}${escapeHtml(ariaDescFrom)}</span>\n` +
+                `<span style="color:${titleColor}">${titleEmoji} Title: ${escapeHtml(title)}</span>`
             );
         }
 
