@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-18
+// @version      2026-03-20
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -140,6 +140,12 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
+    }
+
+    function decodeHtml(str) {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = str;
+        return textarea.value;
     }
 
     function escapeRegex(str) {
@@ -306,9 +312,9 @@
             const descMatch = attrs.match(/\bdescription="([^"]*)"/i);
             const ariaMatch = attrs.match(/\baria-label="([^"]*)"/i);
 
-            const title = titleMatch ? titleMatch[1] : null;
-            const description = descMatch ? descMatch[1] : null;
-            const aria = ariaMatch ? ariaMatch[1] : null;
+            const title = titleMatch ? decodeHtml(titleMatch[1]) : null;
+            const description = descMatch ? decodeHtml(descMatch[1]) : null;
+            const aria = ariaMatch ? decodeHtml(ariaMatch[1]) : null;
 
             let newLabel = "";
             const existing = [title, description, aria].filter(v => v && v.trim() !== "");
@@ -338,7 +344,7 @@
             .replace(/\baria-label="[^"]*"/i, "")
             .trim();
 
-            if (newLabel) newAttrs += ` aria-label="${newLabel}"`;
+            if (newLabel) newAttrs += ` aria-label="${escapeHtml(newLabel)}"`;
 
             newHTML = newHTML.replace(fullMatch, `<iframe ${newAttrs}>`);
         }
