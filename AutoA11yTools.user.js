@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-20
+// @version      2026-03-27
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -450,7 +450,7 @@
             ? '🔊'
             : '🔇';
 
-            const ariaLabelColor = ariaLabel !== '[Missing]' ? '#060' : '#c00';
+            const ariaLabelColor = ariaLabel === '[Missing]' || ariaLabel.toLowerCase().includes('video player') ? '#c00' : '#060';
             const ariaDescColor = ariaDesc !== '[Empty]' ? '#c00' : '#060';
             const titleColor = titleEmoji === '🔊' ? '#c00' : '#060';
 
