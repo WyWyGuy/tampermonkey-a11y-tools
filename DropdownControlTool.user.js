@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Dropdown Control Tool
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-27
+// @version      2026-04-01
 // @description  Use alt + ↓ and alt + ↑ hotkeys to expand and collapse all dropdown menus. Also, adds a menu command to expand dropdowns by default
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -31,7 +31,8 @@
         /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/beta-the-post-supplier-inspection-accessibility-psia-new(?:.*)?$/,
         /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-peer-verification(?:.*)?$/,
         /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/beta-the-peer-review-new(?:.*)?$/,
-        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-textbook-slash-resource-review(?:.*)?$/
+        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/the-textbook-slash-resource-review(?:.*)?$/,
+        /^https:\/\/byu\.instructure\.com\/courses\/1026\/pages\/beta-accessibility-wrap-up-new(?:.*)?$/
     ];
 
     function updateMenu() {
