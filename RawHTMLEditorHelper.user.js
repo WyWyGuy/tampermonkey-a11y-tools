@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Raw HTML Editor Helper
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-20
+// @version      2026-04-06
 // @description  Help detect certain parts of HTML quicker in the raw HTML editor.
 // @author       Wyatt Nilsson
 // @match        https://byu.instructure.com/courses/*
@@ -295,6 +295,10 @@
     async function ariaLabelUpdate(textarea) {
         const before = textarea.value;
         if (!before) return;
+        if (getComputedStyle(textarea).display === 'none') {
+            popUp("Please switch to the raw HTML editor to use this feature");
+            return;
+        }
 
         const iframeRegex = /<iframe\b([^>]*)>/gi;
         let match;
