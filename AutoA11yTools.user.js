@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-27
+// @version      2026-04-15
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -1385,7 +1385,7 @@
 
             const hasAnyTH = table.querySelector('th') !== null;
             if (!hasAnyTH) {
-                issues.push('Table does not contain any <th> header cells');
+                issues.push('Table does not contain any &lt;th&gt; header cells');
             }
 
             rows.forEach((row, rowIndex) => {
