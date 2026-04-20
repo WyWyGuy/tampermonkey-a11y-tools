@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto A11y Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-04-15
+// @version      2026-04-20
 // @description  A set of accessibility tools to use for BYU's Accessibility Team
 // @author       Wyatt Nilsson
 // @match        *://*/*
@@ -22,6 +22,31 @@
 
     // Prevent multiple instances of the script running
     if (window.top !== window.self) return;
+
+    // Start "update to Chrome Extension" notification
+    if (GM_getValue("updateDates") === undefined) {
+        GM_setValue("updateDates", []);
+    }
+    let dates = GM_getValue("updateDates");
+    const today = new Date().toISOString().slice(0, 10);
+    if (dates.includes(today)) {
+        // ignore
+    } else {
+        alert(`A11y Tools is moving away from Tampermonkey!
+
+This is an update from Wyatt, the author of the Tampermonkey scripts you are using. I'm excited to announce that we now have our own separate Chrome extension, so you don't have to use Tampermonkey anymore!
+
+Please take one minute to complete these steps:
+
+1. Uninstall Tampermonkey by clicking the three dots next to the extension and selecting "Remove from Chrome". (Alternatively, you can just disable every script installed if you'd like to keep Tampermonkey)
+2. Install the A11y Web Tools Chrome extension at this link: https://chromewebstore.google.com/detail/iibmophmengnaadjjlbkiemijmdplbni?utm_source=item-share-cb (the link will open after you close this dialog box)
+
+That's it! This change will make updating and controlling the functionality of the scripts much easier! Thank you so much for using these tools!`);
+        window.open("https://chromewebstore.google.com/detail/iibmophmengnaadjjlbkiemijmdplbni?utm_source=item-share-cb", "_blank");
+        dates.push(today);
+        GM_setValue("updateDates", dates);
+    }
+    // End "update to Chrome Extension" notification
 
     const autoRunDomains = [
         'byu.instructure.com',
