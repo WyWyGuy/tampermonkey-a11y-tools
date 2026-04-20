@@ -2,6 +2,10 @@
 
 This GitHub repository is a storage location for digital accessibility userscripts that work with the Tampermonkey extension. They primarily interact with the Canvas LMS to make identifying and fixing accessibility issues easier and faster. If you have Tampermonkey installed, simply click the file you'd like to install, followed by the `Raw` button. Tampermonkey will recognize the code and prompt you to install it.
 
+## Migration Note
+
+These tools have been migrated to their own Chrome extension as of April 20, 2026. That extension can be installed [here](https://chromewebstore.google.com/detail/a11y-web-tools/iibmophmengnaadjjlbkiemijmdplbni).
+
 ## Installation
 
 ### Installing Tampermonkey
