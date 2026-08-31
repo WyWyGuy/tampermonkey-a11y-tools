@@ -1,3 +1,4 @@
+Gridlines
 Toolbars
 OpenAI
 Sparkline
