@@ -1,5 +1,3 @@
-Asdffdsawdwd
-TestTestTest
 Gridlines
 Toolbars
 OpenAI
